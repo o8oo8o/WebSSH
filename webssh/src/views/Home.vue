@@ -875,7 +875,9 @@ function deleteHost(row: any) {
       if (json.code === 0) {
         if (json.data != null) {
           data.host_list = json.data;
+          return;
         }
+        data.host_list = [];
       }
     });
 }
