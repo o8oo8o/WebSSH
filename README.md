@@ -5,18 +5,17 @@
 * Golang + Vue 实现一个Web版单文件的SSH管理工具
 * 借助于Golang embed,打包以后只有一个文件,简单高效
 <br/>
-<br/>
+
 
 ### 在线Demo：
-* [点我](https://www.huangrui.vip:12345)
-<br/>
+* [点我](http://www.huangrui.vip:12345)
 <br/>
 
 
 ### 目标：&nbsp;&nbsp;取代Xshell
 * 目前虽然只实现xshell部分功能,未来计划逐步更新
 <br/>
-<br/>
+
 
 ### 主要功能：
 * 支持同时连接多个主机
@@ -29,7 +28,7 @@
 * 已保存的主机信息可直接编辑并连接
 
 <br/>
-<br/>
+
 
 ### 后端介绍：
 * 使用最新Golang 1.16版本实现后端功能
@@ -37,7 +36,7 @@
 * 基于内存的session功能
 * 借助于sqlite可把主机信息持久化
 <br/>
-<br/>
+
 
 
 ### 前端介绍：
@@ -45,25 +44,48 @@
 * 前端UI使用最近element-plus(目前还没有稳定版)
 * 基于最新版xterm.js + Websocket 实现终端
 <br/>
+
+
+---
+### 打包使用说明：
+git clone https://github.com/o8oo8o/GoWebSSH.git
+
+cd GoWebSSH/webssh/
+
+npm install
+
+npm run build
+
+cd dist
+
+mkdir ../../gossh/webroot
+
+cp -a * ../../gossh/webroot
+
+cd ../../gossh  
+
+go env -w GOPROXY=https://goproxy.cn,direct
+
+go get
+
+go build main.go
+
+打开链接 http://127.0.0.1:8899/ 开始享用吧 *
+
 <br/>
 
----
-### 使用说明：
-* git clone https://github.com/o8oo8o/GoWebSSH.git
+### 配置文件：
+
+* 第一次运行会在用户家目录创建一个 .GoWebSSH 目录
+* GoWebSSH.conf 可以配置server端口等信息
+* GoWebSSH.db  是一个sqlite数据库文件,保存主机配置信息
 
 
+
 ---
-### 演示截图
+### 演示截图：
 ![avatar](./img/a.png)
 ![avatar](./img/b.png)
 ![avatar](./img/c.png)
 ![avatar](./img/d.png)
 ![avatar](./img/e.png)
-
-
-
-
-
-
-
-
