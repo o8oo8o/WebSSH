@@ -68,9 +68,11 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 go get
 
-go build main.go
+go build
 
-打开链接 http://127.0.0.1:8899/ 开始享用吧 *
+./gossh
+
+打开链接 http://127.0.0.1:8899/ 开始享用吧
 
 <br/>
 
