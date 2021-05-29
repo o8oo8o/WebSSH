@@ -8,7 +8,7 @@
 
 
 ### 在线Demo：
-* [点我](http://www.huangrui.vip:12345)
+* [点我](https://www.huangrui.vip:12345)
 <br/>
 
 
@@ -68,9 +68,14 @@ go get
 
 go build
 
-./gossh
+./gossh #启动
 
 打开链接 http://127.0.0.1:8899/ 开始享用吧
+
+<br/>
+
+### 后台运行：
+nohup ./gossh > gossh.log &
 
 <br/>
 
@@ -79,6 +84,12 @@ go build
 * 第一次运行会在用户家目录创建一个 .GoWebSSH 目录
 * GoWebSSH.conf 可以配置server端口等信息
 * GoWebSSH.db  是一个sqlite数据库文件,保存主机配置信息
+* cert.pem HTTPS服务器证书文件
+* key.key  HTTPS服务器私钥文件
+
+### 注意: 
+* 当程序检测到cert.pem 和 key.key 文件,会使用https协议,否则使用http协议
+* 用户只需把证书文件和私钥文件放到 .GoWebSSH 目录就可以了
 
 
 

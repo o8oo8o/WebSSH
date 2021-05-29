@@ -50,14 +50,14 @@ var WorkDir = path.Join(userHomeDir, fmt.Sprintf("/.%s/", projectName))
 // server默认配置,当配置文件不存在的时候,就使用这个默认配置
 var DefaultConfig = map[string]map[string]string{
 	"app": {
-		"AppName":    "god",
-		"Key":        RandString(64),
-		"StaticDir":  userHomeDir,
-		"StaticPath": "/static/;/public/",
+		"AppName": "god",
+		"Key":     RandString(64),
 	},
 	"server": {
-		"Address": "0.0.0.0",
-		"Port":    "8899",
+		"Address":  "0.0.0.0",
+		"Port":     "8899",
+		"CertFile": path.Join(WorkDir, "cert.pem"),
+		"KeyFile":  path.Join(WorkDir, "key.key"),
 	},
 	"session": {
 		"Store":    "memory",
@@ -1347,7 +1347,6 @@ func ConnectGC() {
 		longAgo := time.Now().Add(duration)
 		for key, item := range clients.data {
 			if item.Timeout.Before(longAgo) {
-				// log.Printf("超时删除:%s\n", key)
 				_ = item.sshClient.Close()
 				_ = item.sftpClient.Close()
 				_ = item.sshSession.Close()
@@ -1370,23 +1369,40 @@ func Main() {
 	} else {
 		configInfo = config.GetAllConfig()
 	}
-
+	// 处理前端静态文件
 	http.HandleFunc("/", static)
 
-	//http.Handle("/", http.FileServer(tmpfs))
 	http.HandleFunc("/api/login", LoginHandler)
 	http.HandleFunc("/api/host", HostHandler)
 	http.HandleFunc("/api/ssh", SshHandler)
 	http.HandleFunc("/api/file", FileHandler)
 	http.HandleFunc("/api/status", StatusHandler)
-	address := fmt.Sprintf("%s:%s", configInfo["server"]["Address"], configInfo["server"]["Port"])
-	log.Println(fmt.Sprintf(" %c[%d;%d;%dm(Listen Address ===    %s  ===)%c[0m ", 0x1B, 0, 40, 32, address, 0x1B))
 
-	if err := http.ListenAndServe(address, nil); err != nil {
-		log.Println(fmt.Sprintf("Listen %s error\n", address))
-		log.Println(fmt.Sprintf(" %c[%d;%d;%dm(Listen Error ===    %s  ===)%c[0m ", 0x1B, 0, 40, 31, address, 0x1B))
-		os.Exit(1)
-		return
+	address := fmt.Sprintf("%s:%s", configInfo["server"]["Address"], configInfo["server"]["Port"])
+
+	certFile := configInfo["server"]["CertFile"]
+	keyFile := configInfo["server"]["KeyFile"]
+
+	_, certErr := os.Open(certFile)
+	_, keyErr := os.Open(keyFile)
+
+	// 如果证书和私钥文件存在,就使用https协议
+	if certErr == nil && keyErr == nil {
+		log.Println(fmt.Sprintf(" %c[%d;%d;%dm(open: ===    %s  ===)%c[0m ", 0x1B, 0, 40, 32, "https://{IP}:"+configInfo["server"]["Port"], 0x1B))
+		err = http.ListenAndServeTLS(address, certFile, keyFile, nil)
+		if err != nil {
+			log.Println("ListenAndServeTLSError:", err.Error())
+			os.Exit(1)
+			return
+		}
+	} else {
+		log.Println(fmt.Sprintf(" %c[%d;%d;%dm(open: ===    %s  ===)%c[0m ", 0x1B, 0, 40, 32, "http://{IP}:"+configInfo["server"]["Port"], 0x1B))
+		err = http.ListenAndServe(address, nil)
+		if err != nil {
+			log.Println("ListenAndServeError:", err.Error())
+			os.Exit(1)
+			return
+		}
 	}
 }
 
@@ -1427,11 +1443,12 @@ func init() {
 [app]
 AppName=god
 Key=` + RandString(64) + `
-StaticPath=/static/
 
 [server]
 Address=0.0.0.0
 Port=8899
+CertFile=` + path.Join(WorkDir, "cert.pem") + `
+KeyFile=` + path.Join(WorkDir, "key.key") + `
 
 [session]
 Store=memory
