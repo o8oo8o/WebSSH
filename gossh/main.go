@@ -11,7 +11,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/websocket"
 	"io"
 	"io/fs"
@@ -808,12 +807,14 @@ func (s *Ssh) connect() error {
 func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reader, w, h int, ws *websocket.Conn) error {
 	if s.sshClient == nil {
 		if err := s.connect(); err != nil {
+			log.Fatalln(err.Error())
 			return err
 		}
 	}
-	session, err := s.sshClient.NewSession()
 
+	session, err := s.sshClient.NewSession()
 	if err != nil {
+		log.Fatalln(err.Error())
 		return err
 	}
 
@@ -827,30 +828,21 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 		_ = session.Close()
 	}()
 
-	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = terminal.Restore(fd, oldState)
-	}()
-
 	session.Stdout = stdout
 	session.Stderr = stderr
 	session.Stdin = stdin
 
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
+	modes := ssh.TerminalModes{}
 
 	if err := session.RequestPty("xterm-256color", h, w, modes); err != nil {
 		return err
 	}
 
-	_ = session.Run(shell)
+	err = session.Run(shell)
+	if err != nil {
+		log.Fatalln(err.Error())
+		return err
+	}
 	return nil
 }
 

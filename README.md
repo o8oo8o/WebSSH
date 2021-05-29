@@ -58,8 +58,6 @@ npm run build
 
 cd dist
 
-mkdir ../../gossh/webroot
-
 cp -a * ../../gossh/webroot
 
 cd ../../gossh  
