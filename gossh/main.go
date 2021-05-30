@@ -1360,6 +1360,12 @@ func ConnectGC() {
 }
 
 func Main() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
+	}()
+
 	var configInfo map[string]map[string]string
 
 	config, err := NewConfig(path.Join(WorkDir, "GoWebSSH.cnf"), []string{"#", ";"})
@@ -1521,6 +1527,11 @@ CREATE TABLE IF NOT EXISTS 'config'
 }
 
 func main() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
+	}()
 	go ConnectGC()
 	Main()
 }
