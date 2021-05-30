@@ -333,7 +333,7 @@ func (c Config) GetAllConfig() map[string]map[string]string {
 	allConfig := make(map[string]map[string]string)
 	lines, err := c.ReadLines()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	var section = make(map[string]string, 1)
 
@@ -374,17 +374,6 @@ func NewConfig(filename string, comment []string) (Config, error) {
 		comment:  comment,
 	}, nil
 }
-
-//// 返回文件绝对路径
-//func GetSelfPath() string {
-//	path, _ := filepath.Abs(os.Args[0])
-//	return path
-//}
-//
-//// 返回文件目录
-//func GetSelfDir() string {
-//	return filepath.Dir(GetSelfPath())
-//}
 
 //###############################
 // session 功能
@@ -779,6 +768,12 @@ func NewClient(ip string, username string, password string, port int, shell, ses
 
 // 连接主机
 func (s *Ssh) connect() error {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
+	}()
+
 	config := ssh.ClientConfig{
 		User: s.Username,
 		Auth: []ssh.AuthMethod{ssh.Password(s.Password)},
@@ -797,7 +792,7 @@ func (s *Ssh) connect() error {
 	//使用sshClient构建sftpClient
 	var sftpClient *sftp.Client
 	if sftpClient, err = sftp.NewClient(sshClient); err != nil {
-		log.Fatalln("create sftp sshClient error:", err)
+		log.Println("create sftp sshClient error:", err)
 	}
 	s.sftpClient = sftpClient
 	return nil
@@ -807,14 +802,14 @@ func (s *Ssh) connect() error {
 func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reader, w, h int, ws *websocket.Conn) error {
 	if s.sshClient == nil {
 		if err := s.connect(); err != nil {
-			log.Fatalln(err.Error())
+			log.Println(err.Error())
 			return err
 		}
 	}
 
 	session, err := s.sshClient.NewSession()
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println(err.Error())
 		return err
 	}
 
@@ -840,7 +835,7 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 
 	err = session.Run(shell)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println(err.Error())
 		return err
 	}
 	return nil
@@ -1334,7 +1329,6 @@ func static(w http.ResponseWriter, r *http.Request) {
 清理已经断开的连接
 */
 func ConnectGC() {
-
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -1375,6 +1369,7 @@ func Main() {
 	} else {
 		configInfo = config.GetAllConfig()
 	}
+
 	// 处理前端静态文件
 	http.HandleFunc("/", static)
 
