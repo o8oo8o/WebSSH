@@ -30,13 +30,25 @@ import (
 	"time"
 )
 
-//go:embed webroot
-var dir embed.FS
-
 const (
 	succeed = 0
 	failure = 1
 )
+
+const (
+	Emergency LogLevel = iota
+	Alert
+	Critical
+	Error
+	Warning
+	Notice
+	Info
+	Debug
+)
+
+// 使用go 1.16 新特性
+//go:embed webroot
+var dir embed.FS
 
 var db *sql.DB
 
@@ -47,8 +59,17 @@ var projectName = "GoWebSSH"
 // 程序默认工作目录,在用户的home目录下 .GoWebSSH 目录
 var WorkDir = path.Join(userHomeDir, fmt.Sprintf("/.%s/", projectName))
 
+// 日志级别
+var logLevel = Error
+
+// 日志输出到文件
+var logOutFile = true
+
+// 日志输出到控制台
+var logOutConsole = true
+
 // server默认配置,当配置文件不存在的时候,就使用这个默认配置
-var DefaultConfig = map[string]map[string]string{
+var Config = map[string]map[string]string{
 	"app": {
 		"AppName": "god",
 		"Key":     RandString(64),
@@ -71,6 +92,173 @@ var DefaultConfig = map[string]map[string]string{
 	},
 }
 
+//###############################
+// 日志功能
+//###############################
+
+// brush is a color join function
+type brush func(string) string
+
+// newBrush return a fix color Brush
+func newBrush(color string) brush {
+	return func(text string) string {
+		return "\033[" + color + "m" + text + "\033[0m"
+	}
+}
+
+var colors = []brush{
+	newBrush("1;41"), // Emergency          white
+	newBrush("1;36"), // Alert              cyan
+	newBrush("1;35"), // Critical           magenta
+	newBrush("1;31"), // Error              red
+	newBrush("1;33"), // Warning            yellow
+	newBrush("1;32"), // Notice             green
+	newBrush("1;34"), // Informational      blue
+	newBrush("1;38"), // Debug              white
+}
+
+type LogLevel uint8
+
+type Log struct {
+	*log.Logger
+	logFile    *os.File
+	Name       string
+	Level      LogLevel
+	OutFile    bool
+	OutConsole bool
+}
+
+// NewLogger
+// name 日志文件名称
+// level 日志级别
+// outFile 是否把日志输出到文件
+// outConsole 是否把日志输出到控制台
+func NewLogger(name string, level LogLevel, outFile, outConsole bool) *Log {
+	if strings.TrimSpace(name) == "" {
+		log.Println("Panic:Log name cannot be empty")
+	}
+
+	logFile, err := os.OpenFile(name+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println("Panic:Open log file error")
+	}
+
+	logger := log.New(os.Stdout, "", log.Ldate|log.Lmicroseconds|log.Lshortfile)
+
+	logObject := &Log{
+		logger,
+		logFile,
+		name,
+		level,
+		outFile,
+		outConsole,
+	}
+	return logObject
+}
+
+func (l *Log) Emergency(v ...interface{}) {
+	if l.Level < 0 {
+		return
+	}
+	l.SetPrefix("[M]: ")
+	l.write(fmt.Sprint(v...), 0)
+}
+
+func (l *Log) Alert(v ...interface{}) {
+	if l.Level < 1 {
+		return
+	}
+	l.SetPrefix("[A]: ")
+	l.write(fmt.Sprint(v...), 1)
+}
+
+func (l *Log) Critical(v ...interface{}) {
+	if l.Level < 2 {
+		return
+	}
+	l.SetPrefix("[C]: ")
+	l.write(fmt.Sprint(v...), 2)
+}
+
+func (l *Log) Error(v ...interface{}) {
+	if l.Level < 3 {
+		return
+	}
+	l.SetPrefix("[E]: ")
+	l.write(fmt.Sprint(v...), 3)
+}
+
+func (l *Log) Warning(v ...interface{}) {
+	if l.Level < 4 {
+		return
+	}
+	l.SetPrefix("[W]: ")
+	l.write(fmt.Sprint(v...), 4)
+}
+
+func (l *Log) Notice(v ...interface{}) {
+	if l.Level < 5 {
+		return
+	}
+	l.SetPrefix("[N]: ")
+	l.write(fmt.Sprint(v...), 5)
+}
+
+func (l *Log) Info(v ...interface{}) {
+	if l.Level < 6 {
+		return
+	}
+	l.SetPrefix("[I]: ")
+	l.write(fmt.Sprint(v...), 6)
+}
+
+func (l *Log) Debug(v ...interface{}) {
+	if l.Level < 7 {
+		return
+	}
+	l.SetPrefix("[D]: ")
+	l.write(fmt.Sprint(v...), 7)
+}
+
+func (l *Log) write(msg string, level int) {
+	if l.OutConsole {
+		l.SetOutput(os.Stdout)
+		_ = l.Output(3, colors[level](msg))
+	}
+
+	if l.OutFile {
+		l.SetOutput(l.logFile)
+		_ = l.Output(3, msg)
+	}
+}
+
+func (l *Log) SetLogLevel(level LogLevel) {
+	l.Level = level
+}
+
+// 日志功能
+var logger = NewLogger("GoSSH", logLevel, logOutFile, logOutConsole)
+
+/**
+// 是否输出到控制台
+logger.OutConsole = false
+
+// 是否输出到文件
+logger.OutFile = true
+
+// 设置日志级别
+logger.SetLogLevel(Error)
+
+logger.Debug("Debug")
+logger.Info("Informational")
+logger.Notice("Notice")
+logger.Warning("Warning")
+logger.Error("Error")
+logger.Critical("Critical")
+logger.Alert("Alert")
+logger.Emergency("Emergency")
+*/
+
 // 生成指定长度随机字符串
 func RandString(l int) string {
 	str := "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -83,6 +271,10 @@ func RandString(l int) string {
 	return string(result)
 }
 
+//###############################
+// 控制器Base
+//###############################
+
 // 默认控制器,所有的控制器都要继承这个控制器
 type Controller struct{}
 
@@ -92,7 +284,6 @@ func (controller *Controller) GET(c *HttpContext) {
 
 func (controller *Controller) POST(c *HttpContext) {
 	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-
 }
 
 func (controller *Controller) DELETE(c *HttpContext) {
@@ -141,6 +332,7 @@ func newContext(w *http.ResponseWriter, r *http.Request) *HttpContext {
 		Path:     r.URL.Path,
 		Method:   r.Method,
 	}
+	logger.Debug("newContext")
 	CreateSession(context)
 	return context
 }
@@ -220,10 +412,10 @@ func (c *HttpContext) Handler(controller interface{}) {
 }
 
 //###############################
-// 读取配置文件
+// 读取配置文件功能
 //###############################
 
-type Config struct {
+type configFile struct {
 	fileName string
 	comment  []string
 }
@@ -275,7 +467,7 @@ func (s Section) GetBool(key string) (bool, error) {
 }
 
 // 读取配置文件的每一行
-func (c Config) ReadLines() (lines []string, err error) {
+func (c configFile) ReadLines() (lines []string, err error) {
 	fd, err := os.Open(c.fileName)
 	if err != nil {
 		return
@@ -329,11 +521,11 @@ func (c Config) ReadLines() (lines []string, err error) {
 }
 
 // 获取所有配置
-func (c Config) GetAllConfig() map[string]map[string]string {
+func (c configFile) GetAllConfig() map[string]map[string]string {
 	allConfig := make(map[string]map[string]string)
 	lines, err := c.ReadLines()
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 	}
 	var section = make(map[string]string, 1)
 
@@ -353,7 +545,7 @@ func (c Config) GetAllConfig() map[string]map[string]string {
 }
 
 // 获取某一段配置
-func (c Config) GetSection(section string) (Section, error) {
+func (c configFile) GetSection(section string) (Section, error) {
 	if data, ok := c.GetAllConfig()[section]; ok {
 		return data, nil
 	}
@@ -361,15 +553,15 @@ func (c Config) GetSection(section string) (Section, error) {
 }
 
 // 加载配置文件
-func NewConfig(filename string, comment []string) (Config, error) {
+func LoadConfig(filename string, comment []string) (configFile, error) {
 	_, err := os.Stat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Println("file not exist:", err)
-			return Config{}, err
+			logger.Error("file not exist:", err)
+			return configFile{}, err
 		}
 	}
-	return Config{
+	return configFile{
 		fileName: filename,
 		comment:  comment,
 	}, nil
@@ -402,34 +594,34 @@ func newSessionConfig() sessionConfig {
 	var sessionMaxAge = 3600
 	var sessionSameSite = http.SameSiteLaxMode
 
-	if len(DefaultConfig["session"]["Name"]) > 0 {
-		sessionName = DefaultConfig["session"]["Name"]
+	if len(Config["session"]["Name"]) > 0 {
+		sessionName = Config["session"]["Name"]
 	}
 
-	if len(DefaultConfig["session"]["Path"]) > 0 {
-		sessionPath = DefaultConfig["session"]["Path"]
+	if len(Config["session"]["Path"]) > 0 {
+		sessionPath = Config["session"]["Path"]
 	}
 
-	if len(DefaultConfig["session"]["Domain"]) > 0 {
-		sessionDomain = DefaultConfig["session"]["Domain"]
+	if len(Config["session"]["Domain"]) > 0 {
+		sessionDomain = Config["session"]["Domain"]
 	}
 
-	sessionHttpOnly, err = strconv.ParseBool(DefaultConfig["session"]["HttpOnly"])
+	sessionHttpOnly, err = strconv.ParseBool(Config["session"]["HttpOnly"])
 	if err != nil {
 		sessionHttpOnly = true
 	}
 
-	sessionSecure, err = strconv.ParseBool(DefaultConfig["session"]["Secure"])
+	sessionSecure, err = strconv.ParseBool(Config["session"]["Secure"])
 	if err != nil {
 		sessionSecure = false
 	}
 
-	sessionMaxAge, err = strconv.Atoi(DefaultConfig["session"]["MaxAge"])
+	sessionMaxAge, err = strconv.Atoi(Config["session"]["MaxAge"])
 	if err != nil {
 		sessionMaxAge = 3600
 	}
 
-	sessionSameSiteVal, err := strconv.Atoi(DefaultConfig["session"]["SameSite"])
+	sessionSameSiteVal, err := strconv.Atoi(Config["session"]["SameSite"])
 	if err != nil {
 		sessionSameSite = http.SameSiteLaxMode
 	} else {
@@ -473,8 +665,8 @@ func CreateSession(c *HttpContext) {
 
 		// 获取app的Key
 		appKey := RandString(64)
-		if len(DefaultConfig["App"]["Key"]) > 0 {
-			appKey = DefaultConfig["session"]["Name"]
+		if len(Config["App"]["Key"]) > 0 {
+			appKey = Config["session"]["Name"]
 		}
 
 		sessionId = fmt.Sprintf("%x", sha256.Sum256([]byte( appKey+strconv.FormatInt(time.Now().UnixNano(), 10))))
@@ -490,7 +682,7 @@ func CreateSession(c *HttpContext) {
 				sessionData = session
 			}
 		} else {
-			// log.Println("客户端的 session 数据已经在服务端删除了")
+			logger.Debug("客户端的 session 数据已经在服务端删除了")
 			sessionData = memorySession{"id": sessionId, "lastAccessTime": time.Now(), "maxAge": config.sessionMaxAge}
 			memoryDatabase.data.Store(sessionId, sessionData)
 		}
@@ -527,7 +719,7 @@ func (m *MemoryDatabase) MemoryDatabaseGC() {
 			if data, ok := value.(memorySession); ok {
 				lastAccessTime := data.Get("lastAccessTime").(time.Time).Unix() + int64(data.Get("maxAge").(int))
 				if lastAccessTime < time.Now().Unix() {
-					// 删除过期session
+					logger.Debug("删除过期session")
 					m.data.Delete(key)
 				}
 			}
@@ -592,7 +784,7 @@ func (l Login) POST(context *HttpContext) {
 	login := new(Login)
 	err := row.Scan(&login.Id, &login.Pwd)
 	if err != nil {
-		log.Println(err.Error())
+		logger.Error(err)
 		context.JSON(500, nil, failure, "login error")
 		return
 	}
@@ -622,7 +814,7 @@ func (l Login) PATCH(context *HttpContext) {
 	login := new(Login)
 	err := row.Scan(&login.Id, &login.Pwd)
 	if err != nil {
-		log.Println(err.Error())
+		logger.Error(err)
 		context.JSON(500, nil, failure, "login error")
 		return
 	}
@@ -770,7 +962,7 @@ func NewClient(ip string, username string, password string, port int, shell, ses
 func (s *Ssh) connect() error {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			logger.Error(err)
 		}
 	}()
 
@@ -792,7 +984,7 @@ func (s *Ssh) connect() error {
 	//使用sshClient构建sftpClient
 	var sftpClient *sftp.Client
 	if sftpClient, err = sftp.NewClient(sshClient); err != nil {
-		log.Println("create sftp sshClient error:", err)
+		logger.Error("create sftp sshClient error:", err)
 	}
 	s.sftpClient = sftpClient
 	return nil
@@ -802,14 +994,14 @@ func (s *Ssh) connect() error {
 func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reader, w, h int, ws *websocket.Conn) error {
 	if s.sshClient == nil {
 		if err := s.connect(); err != nil {
-			log.Println(err.Error())
+			logger.Error(err)
 			return err
 		}
 	}
 
 	session, err := s.sshClient.NewSession()
 	if err != nil {
-		log.Println(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -835,7 +1027,7 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 
 	err = session.Run(shell)
 	if err != nil {
-		log.Println(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 	return nil
@@ -1133,7 +1325,6 @@ func (host Host) PUT(context *HttpContext) {
 		return
 	}
 	host.GET(context)
-
 }
 
 func (host Host) DELETE(context *HttpContext) {
@@ -1163,7 +1354,6 @@ func (host Host) PATCH(context *HttpContext) {
 	clients.data[sessionId] = client
 	clients.lock.Unlock()
 	context.JSON(200, sessionId, succeed, "ok")
-
 }
 
 func HostHandler(response http.ResponseWriter, request *http.Request) {
@@ -1194,7 +1384,6 @@ func (file File) POST(context *HttpContext) {
 
 // sftp 获取指定目录下文件信息
 func (file File) GET(context *HttpContext) {
-
 	dirPath := context.Query("path")
 	sessionId := context.Query("session_id")
 	clients.lock.RLock()
@@ -1331,7 +1520,7 @@ func static(w http.ResponseWriter, r *http.Request) {
 func ConnectGC() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			logger.Error(err)
 		}
 	}()
 
@@ -1353,22 +1542,17 @@ func ConnectGC() {
 	}
 }
 
-func Main() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	var configInfo map[string]map[string]string
-
-	config, err := NewConfig(path.Join(WorkDir, "GoWebSSH.cnf"), []string{"#", ";"})
-	if err != nil {
-		log.Println("读取配置文件失败,已使用系统默认配置")
-		configInfo = DefaultConfig
-	} else {
-		configInfo = config.GetAllConfig()
+// loadConfigFileData 加载配置文件数据
+func loadConfigFileData() {
+	configFile, err := LoadConfig(path.Join(WorkDir, "GoWebSSH.cnf"), []string{"#", ";"})
+	if err == nil {
+		logger.Debug("读取配置文件成功,使用系统配置文件")
+		Config = configFile.GetAllConfig()
 	}
+}
+
+func Main() {
+	var err error
 
 	// 处理前端静态文件
 	http.HandleFunc("/", static)
@@ -1379,28 +1563,28 @@ func Main() {
 	http.HandleFunc("/api/file", FileHandler)
 	http.HandleFunc("/api/status", StatusHandler)
 
-	address := fmt.Sprintf("%s:%s", configInfo["server"]["Address"], configInfo["server"]["Port"])
+	address := fmt.Sprintf("%s:%s", Config["server"]["Address"], Config["server"]["Port"])
 
-	certFile := configInfo["server"]["CertFile"]
-	keyFile := configInfo["server"]["KeyFile"]
+	certFile := Config["server"]["CertFile"]
+	keyFile := Config["server"]["KeyFile"]
 
 	_, certErr := os.Open(certFile)
 	_, keyErr := os.Open(keyFile)
 
-	// 如果证书和私钥文件存在,就使用https协议
+	// 如果证书和私钥文件存在,就使用https协议,否则使用http协议
 	if certErr == nil && keyErr == nil {
-		log.Println(fmt.Sprintf(" %c[%d;%d;%dm(open: ===    %s  ===)%c[0m ", 0x1B, 0, 40, 32, "https://{IP}:"+configInfo["server"]["Port"], 0x1B))
+		logger.Debug("https://{IP}:" + Config["server"]["Port"])
 		err = http.ListenAndServeTLS(address, certFile, keyFile, nil)
 		if err != nil {
-			log.Println("ListenAndServeTLSError:", err.Error())
+			logger.Error("ListenAndServeTLSError:", err.Error())
 			os.Exit(1)
 			return
 		}
 	} else {
-		log.Println(fmt.Sprintf(" %c[%d;%d;%dm(open: ===    %s  ===)%c[0m ", 0x1B, 0, 40, 32, "http://{IP}:"+configInfo["server"]["Port"], 0x1B))
+		logger.Debug("http://{IP}:" + Config["server"]["Port"])
 		err = http.ListenAndServe(address, nil)
 		if err != nil {
-			log.Println("ListenAndServeError:", err.Error())
+			logger.Error("ListenAndServeError:", err.Error())
 			os.Exit(1)
 			return
 		}
@@ -1414,14 +1598,14 @@ func init() {
 	if os.IsNotExist(err) {
 		err = os.Mkdir(WorkDir, fs.ModePerm)
 		if err != nil {
-			log.Println(fmt.Sprintf("创建目录:%s 失败,%s\n", WorkDir, err))
+			logger.Error(fmt.Sprintf("创建目录:%s 失败,%s\n", WorkDir, err))
 			os.Exit(1)
 			return
 		}
 
 	} else {
 		if !fileInfo.IsDir() {
-			log.Println(fmt.Sprintf("请删除:%s文件\n", WorkDir))
+			logger.Error(fmt.Sprintf("请删除:%s文件\n", WorkDir))
 			os.Exit(1)
 			return
 		}
@@ -1432,12 +1616,12 @@ func init() {
 	if os.IsNotExist(err) {
 		file, err := os.Create(configFilePath)
 		if err != nil {
-			log.Println(fmt.Sprintf("创建默认配置文件:%s 失败,%s\n", configFilePath, err))
+			logger.Error(fmt.Sprintf("创建默认配置文件:%s 失败,%s\n", configFilePath, err))
 			os.Exit(1)
 			return
 		}
 		defer func() {
-			file.Close()
+			_ = file.Close()
 		}()
 
 		configContent := `
@@ -1463,7 +1647,7 @@ SameSite=2
 `
 		_, err = file.WriteString(configContent)
 		if err != nil {
-			log.Println(fmt.Sprintf("写入配置文件:%s 失败,%s\n", configFilePath, err))
+			logger.Error(fmt.Sprintf("写入配置文件:%s 失败,%s\n", configFilePath, err))
 			os.Exit(1)
 			return
 		}
@@ -1472,7 +1656,7 @@ SameSite=2
 
 	db, err = sql.Open("sqlite3", path.Join(WorkDir, projectName+".db"))
 	if err != nil {
-		log.Println(fmt.Sprintf("创建数据库文件:%s失败\n", path.Join(WorkDir, projectName+".db")))
+		logger.Error(fmt.Sprintf("创建数据库文件:%s失败\n", path.Join(WorkDir, projectName+".db")))
 		os.Exit(1)
 		return
 	}
@@ -1494,10 +1678,10 @@ CREATE TABLE IF NOT EXISTS 'host'
     'CursorStyle' VARCHAR(32) NOT NULL DEFAULT 'block',
     'Shell'       VARCHAR(32) NOT NULL DEFAULT 'bash'
 );
-	`
+`
 	_, err = db.Exec(createHostTable)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 	}
 
 	createConfigTable := `
@@ -1506,25 +1690,23 @@ CREATE TABLE IF NOT EXISTS 'config'
     'Id'          INTEGER PRIMARY KEY AUTOINCREMENT,
     'Pwd'         VARCHAR(64) NOT NULL DEFAULT 'admin'
 );
-	`
+`
 	_, err = db.Exec(createConfigTable)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 	}
 
 	insertSql := `INSERT INTO config(Id,Pwd)  values(?,?)`
 	stmt, _ := db.Prepare(insertSql)
 	_, err = stmt.Exec(1, "admin")
-	if err != nil {
-		// 配置文件已经存在
-		log.Println(err.Error())
-	}
+
+	loadConfigFileData()
 }
 
 func main() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			logger.Emergency(err)
 		}
 	}()
 	go ConnectGC()
