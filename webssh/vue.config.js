@@ -1,6 +1,6 @@
 
 module.exports = {
-    
+
     devServer: {
         host: '0.0.0.0',
         port: 8080,
@@ -11,13 +11,12 @@ module.exports = {
                 secure: false,
                 changeOrigin: true,
                 pathRewrite: {
-                    '^/api': '/api',//重写,
+                    '^/api': '/api',
                 }
             },
         }
     },
-    publicPath: process.env.NODE_ENV === 'production' ? '/' : '/'
+    // publicPath: process.env.NODE_ENV === 'production' ? '/gowebssh' : '/',
+    publicPath: "./",
+    outputDir: "gowebssh"
 };
-
-//============================================
-// 

@@ -2,28 +2,27 @@ package main
 
 import (
 	"bufio"
-	"crypto/sha256"
 	"database/sql"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/net/websocket"
+	"gossh/lib/crypto/ssh"
+	"gossh/lib/gin"
+	"gossh/lib/gin/sessions"
+	"gossh/lib/gin/sessions/cookie"
+	"gossh/lib/sftp"
+	_ "gossh/lib/sqlite3"
+	"gossh/lib/websocket"
 	"io"
 	"io/fs"
 	"log"
 	"math/rand"
-	"mime"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,7 +45,9 @@ const (
 	Debug
 )
 
-// 使用go 1.16 新特性
+var engine = gin.Default()
+
+// 使用go 1.16+ 新特性
 //go:embed webroot
 var dir embed.FS
 
@@ -56,23 +57,16 @@ var userHomeDir, _ = os.UserHomeDir()
 
 var projectName = "GoWebSSH"
 
-// 程序默认工作目录,在用户的home目录下 .GoWebSSH 目录
+// WorkDir 程序默认工作目录,在用户的home目录下 .GoWebSSH 目录
 var WorkDir = path.Join(userHomeDir, fmt.Sprintf("/.%s/", projectName))
 
 // 日志级别
 var logLevel = Error
 
-// 日志输出到文件
-var logOutFile = true
-
-// 日志输出到控制台
-var logOutConsole = true
-
-// server默认配置,当配置文件不存在的时候,就使用这个默认配置
+// Config 默认配置,当配置文件不存在的时候,就使用这个默认配置
 var Config = map[string]map[string]string{
 	"app": {
-		"AppName": "god",
-		"Key":     RandString(64),
+		"AppName": "GoWebSSH",
 	},
 	"server": {
 		"Address":  "0.0.0.0",
@@ -81,7 +75,7 @@ var Config = map[string]map[string]string{
 		"KeyFile":  path.Join(WorkDir, "key.key"),
 	},
 	"session": {
-		"Store":    "memory",
+		"Secret":   RandString(64),
 		"Name":     "session_id",
 		"Path":     "/",
 		"Domain":   "",
@@ -90,6 +84,64 @@ var Config = map[string]map[string]string{
 		"HttpOnly": "true",
 		"SameSite": "2",
 	},
+}
+
+func sessionMiddleware() gin.HandlerFunc {
+	var err error
+	var sessionName = "session_id"
+	var sessionPath = "/"
+	var sessionHttpOnly = true
+	var sessionSecure = false
+	var sessionDomain = ""
+	var sessionMaxAge = 3600 * 24
+	var sessionSameSite = http.SameSiteLaxMode
+
+	if len(Config["session"]["Name"]) > 0 {
+		sessionName = Config["session"]["Name"]
+	}
+
+	if len(Config["session"]["Path"]) > 0 {
+		sessionPath = Config["session"]["Path"]
+	}
+
+	if len(Config["session"]["Domain"]) > 0 {
+		sessionDomain = Config["session"]["Domain"]
+	}
+
+	sessionHttpOnly, err = strconv.ParseBool(Config["session"]["HttpOnly"])
+	if err != nil {
+		sessionHttpOnly = true
+	}
+
+	sessionSecure, err = strconv.ParseBool(Config["session"]["Secure"])
+	if err != nil {
+		sessionSecure = false
+	}
+
+	sessionMaxAge, err = strconv.Atoi(Config["session"]["MaxAge"])
+	if err != nil {
+		sessionMaxAge = 3600
+	}
+
+	sessionSameSiteVal, err := strconv.Atoi(Config["session"]["SameSite"])
+	if err != nil {
+		sessionSameSite = http.SameSiteLaxMode
+	} else {
+		sessionSameSite = http.SameSite(sessionSameSiteVal)
+	}
+
+	// 加密cookie方式
+	store := cookie.NewStore([]byte(Config["session"]["Secret"]))
+
+	store.Options(sessions.Options{
+		Path:     sessionPath,
+		Domain:   sessionDomain,
+		MaxAge:   sessionMaxAge,
+		Secure:   sessionSecure,
+		HttpOnly: sessionHttpOnly,
+		SameSite: sessionSameSite,
+	})
+	return sessions.Sessions(sessionName, store)
 }
 
 //###############################
@@ -237,7 +289,7 @@ func (l *Log) SetLogLevel(level LogLevel) {
 }
 
 // 日志功能
-var logger = NewLogger("GoSSH", logLevel, logOutFile, logOutConsole)
+var logger = NewLogger("GoSSH", logLevel, true, true)
 
 /**
 // 是否输出到控制台
@@ -259,156 +311,16 @@ logger.Alert("Alert")
 logger.Emergency("Emergency")
 */
 
-// 生成指定长度随机字符串
-func RandString(l int) string {
+// RandString 生成指定长度随机字符串
+func RandString(length int) string {
 	str := "0123456789abcdefghijklmnopqrstuvwxyz"
 	data := []byte(str)
 	var result []byte
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < l; i++ {
+	for i := 0; i < length; i++ {
 		result = append(result, data[r.Intn(len(data))])
 	}
 	return string(result)
-}
-
-//###############################
-// 控制器Base
-//###############################
-
-// 默认控制器,所有的控制器都要继承这个控制器
-type Controller struct{}
-
-func (controller *Controller) GET(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not  allowed")
-}
-
-func (controller *Controller) POST(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) DELETE(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) PUT(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) HEAD(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) PATCH(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) OPTIONS(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-func (controller *Controller) TRACE(c *HttpContext) {
-	c.JSON(http.StatusMethodNotAllowed, nil, failure, "request method not allowed")
-}
-
-//###############################
-// HttpContext 请求信息
-//###############################
-
-type HttpContext struct {
-	Response   *http.ResponseWriter
-	Request    *http.Request
-	Path       string
-	Method     string
-	StatusCode int
-	Session    Session
-	SessionId  string
-}
-
-// 创建Context
-func newContext(w *http.ResponseWriter, r *http.Request) *HttpContext {
-	context := &HttpContext{
-		Response: w,
-		Request:  r,
-		Path:     r.URL.Path,
-		Method:   r.Method,
-	}
-	logger.Debug("newContext")
-	CreateSession(context)
-	return context
-}
-
-func (c *HttpContext) Query(key string) string {
-	_ = c.Request.ParseMultipartForm(32 << 20)
-	value := c.Request.Form.Get(key)
-	return strings.TrimSpace(value)
-}
-
-func (c *HttpContext) Status(code int) {
-	c.StatusCode = code
-	(*c.Response).WriteHeader(code)
-}
-
-func (c *HttpContext) SetHeader(key string, value string) {
-	(*c.Response).Header().Set(key, value)
-}
-
-// 响应 string 对象
-func (c *HttpContext) String(code int, format string, values ...interface{}) {
-	c.Status(code)
-	c.SetHeader("Content-Type", "text/plain")
-	_, _ = (*c.Response).Write([]byte(fmt.Sprintf(format, values...)))
-}
-
-// 响应 json 对象
-func (c *HttpContext) JSON(statusCode int, data interface{}, code int, msg string) {
-	c.SetHeader("Content-Type", "application/json")
-	(*c.Response).WriteHeader(statusCode)
-
-	type DataInfo struct {
-		Code int         `json:"code"`
-		Msg  string      `json:"msg"`
-		Data interface{} `json:"data"`
-	}
-
-	byteData, err := json.Marshal(DataInfo{
-		Code: code,
-		Msg:  msg,
-		Data: data,
-	})
-	if err != nil {
-		_, _ = (*c.Response).Write([]byte(`{"code":1,"msg":"json dump error"}`))
-		return
-	}
-	_, _ = (*c.Response).Write(byteData)
-}
-
-// 响应二进制文件
-func (c *HttpContext) Data(code int, data []byte) {
-	c.Status(code)
-	_, _ = (*c.Response).Write(data)
-}
-
-// 响应HTML文件
-func (c *HttpContext) HTML(code int, html string) {
-	c.Status(code)
-	c.SetHeader("Content-Type", "text/html")
-	_, _ = (*c.Response).Write([]byte(html))
-}
-
-// 通过反射调用对应的请求方法
-func (c *HttpContext) Handler(controller interface{}) {
-	// 反射获取控制器信息
-	hostController := reflect.ValueOf(controller)
-	requestMethod := hostController.MethodByName(c.Method)
-
-	// 判断控制器是否存在对应的方法
-	if !requestMethod.IsValid() {
-		c.JSON(400, nil, failure, "request method error")
-		return
-	}
-
-	// 通过反射调用控制器的方法
-	requestMethod.Call([]reflect.Value{reflect.ValueOf(c)})
 }
 
 //###############################
@@ -420,10 +332,10 @@ type configFile struct {
 	comment  []string
 }
 
-// 配置片段类型
+// Section 配置片段类型
 type Section map[string]string
 
-// 获取片段中的值,(转换成int)
+// GetInt 获取片段中的值,(转换成int)
 func (s Section) GetInt(key string) (int, error) {
 	data := 0
 	if val, ok := s[key]; ok {
@@ -435,7 +347,7 @@ func (s Section) GetInt(key string) (int, error) {
 	return data, errors.New("GetInt Error")
 }
 
-// 获取片段中的值,(转换成float)
+// GetFloat 获取片段中的值,(转换成float)
 func (s Section) GetFloat(key string) (float64, error) {
 	data := 0.0
 	if val, ok := s[key]; ok {
@@ -447,7 +359,7 @@ func (s Section) GetFloat(key string) (float64, error) {
 	return data, errors.New("GetFloat Error")
 }
 
-// 获取片段中的值,(默认值字符串)
+// GetString 获取片段中的值,(默认值字符串)
 func (s Section) GetString(key string) (string, error) {
 	if val, ok := s[key]; ok {
 		return val, nil
@@ -455,7 +367,7 @@ func (s Section) GetString(key string) (string, error) {
 	return "", errors.New("GetString Error")
 }
 
-// 获取片段中的值,(转换成bool)
+// GetBool 获取片段中的值,(转换成bool)
 func (s Section) GetBool(key string) (bool, error) {
 	if val, ok := s[key]; ok {
 		data, err := strconv.ParseBool(val)
@@ -466,7 +378,7 @@ func (s Section) GetBool(key string) (bool, error) {
 	return false, errors.New("GetBool Error")
 }
 
-// 读取配置文件的每一行
+// ReadLines 读取配置文件的每一行
 func (c configFile) ReadLines() (lines []string, err error) {
 	fd, err := os.Open(c.fileName)
 	if err != nil {
@@ -520,7 +432,7 @@ func (c configFile) ReadLines() (lines []string, err error) {
 	return lines, nil
 }
 
-// 获取所有配置
+// GetAllConfig 获取所有配置
 func (c configFile) GetAllConfig() map[string]map[string]string {
 	allConfig := make(map[string]map[string]string)
 	lines, err := c.ReadLines()
@@ -544,7 +456,7 @@ func (c configFile) GetAllConfig() map[string]map[string]string {
 	return allConfig
 }
 
-// 获取某一段配置
+// GetSection 获取某一段配置
 func (c configFile) GetSection(section string) (Section, error) {
 	if data, ok := c.GetAllConfig()[section]; ok {
 		return data, nil
@@ -552,7 +464,7 @@ func (c configFile) GetSection(section string) (Section, error) {
 	return map[string]string{}, nil
 }
 
-// 加载配置文件
+// LoadConfig 加载配置文件
 func LoadConfig(filename string, comment []string) (configFile, error) {
 	_, err := os.Stat(filename)
 	if err != nil {
@@ -571,194 +483,7 @@ func LoadConfig(filename string, comment []string) (configFile, error) {
 // session 功能
 //###############################
 
-// session 配置
-type sessionConfig struct {
-	sessionStore    string
-	sessionName     string
-	sessionPath     string
-	sessionHttpOnly bool
-	sessionSecure   bool
-	sessionDomain   string
-	sessionMaxAge   int
-	sessionSameSite http.SameSite
-}
-
-// 创建session配置
-func newSessionConfig() sessionConfig {
-	var err error
-	var sessionName = "session_id"
-	var sessionPath = "/"
-	var sessionHttpOnly = true
-	var sessionSecure = false
-	var sessionDomain = ""
-	var sessionMaxAge = 3600
-	var sessionSameSite = http.SameSiteLaxMode
-
-	if len(Config["session"]["Name"]) > 0 {
-		sessionName = Config["session"]["Name"]
-	}
-
-	if len(Config["session"]["Path"]) > 0 {
-		sessionPath = Config["session"]["Path"]
-	}
-
-	if len(Config["session"]["Domain"]) > 0 {
-		sessionDomain = Config["session"]["Domain"]
-	}
-
-	sessionHttpOnly, err = strconv.ParseBool(Config["session"]["HttpOnly"])
-	if err != nil {
-		sessionHttpOnly = true
-	}
-
-	sessionSecure, err = strconv.ParseBool(Config["session"]["Secure"])
-	if err != nil {
-		sessionSecure = false
-	}
-
-	sessionMaxAge, err = strconv.Atoi(Config["session"]["MaxAge"])
-	if err != nil {
-		sessionMaxAge = 3600
-	}
-
-	sessionSameSiteVal, err := strconv.Atoi(Config["session"]["SameSite"])
-	if err != nil {
-		sessionSameSite = http.SameSiteLaxMode
-	} else {
-		sessionSameSite = http.SameSite(sessionSameSiteVal)
-	}
-
-	return sessionConfig{
-		sessionName:     sessionName,
-		sessionPath:     sessionPath,
-		sessionHttpOnly: sessionHttpOnly,
-		sessionSecure:   sessionSecure,
-		sessionDomain:   sessionDomain,
-		sessionMaxAge:   sessionMaxAge,
-		sessionSameSite: sessionSameSite,
-	}
-}
-
-// session存储需要实现的接口
-type Session interface {
-	Set(key string, value interface{})
-	Get(key string) interface{}
-	Delete(key string)
-	Clear()
-	Expire(maxAge int)
-}
-
-// 内存数据库
-var memoryDatabase = newMemoryDatabase()
-
-type memorySession map[string]interface{}
-
-// 创建session存储
-func CreateSession(c *HttpContext) {
-
-	config := memoryDatabase.config
-
-	var sessionId string
-	cookie, errs := c.Request.Cookie(config.sessionName)
-	var sessionData memorySession
-	if errs != nil || cookie.Value == "" {
-
-		// 获取app的Key
-		appKey := RandString(64)
-		if len(Config["App"]["Key"]) > 0 {
-			appKey = Config["session"]["Name"]
-		}
-
-		sessionId = fmt.Sprintf("%x", sha256.Sum256([]byte( appKey+strconv.FormatInt(time.Now().UnixNano(), 10))))
-		sessionData = memorySession{"id": sessionId, "lastAccessTime": time.Now(), "maxAge": config.sessionMaxAge}
-		memoryDatabase.data.Store(sessionId, sessionData)
-
-	} else {
-		sessionId, _ = url.QueryUnescape(cookie.Value)
-		if data, ok := memoryDatabase.data.Load(sessionId); ok {
-			if session, ok := data.(memorySession); ok {
-				session.Set("lastAccessTime", time.Now())
-				session.Set("maxAge", config.sessionMaxAge)
-				sessionData = session
-			}
-		} else {
-			logger.Debug("客户端的 session 数据已经在服务端删除了")
-			sessionData = memorySession{"id": sessionId, "lastAccessTime": time.Now(), "maxAge": config.sessionMaxAge}
-			memoryDatabase.data.Store(sessionId, sessionData)
-		}
-
-	}
-
-	c.SessionId = sessionId
-	c.Session = &sessionData
-
-	cookie = &http.Cookie{
-		Name:     config.sessionName,
-		Value:    sessionId,
-		Path:     config.sessionPath,
-		HttpOnly: config.sessionHttpOnly,
-		Secure:   config.sessionSecure,
-		Domain:   config.sessionDomain,
-		MaxAge:   config.sessionMaxAge,
-		SameSite: config.sessionSameSite,
-	}
-	(*c.Response).Header().Set("Set-Cookie", cookie.String())
-	c.Request.AddCookie(cookie)
-
-}
-
-type MemoryDatabase struct {
-	data   sync.Map
-	config sessionConfig
-}
-
-func (m *MemoryDatabase) MemoryDatabaseGC() {
-	for {
-		time.Sleep(time.Second)
-		m.data.Range(func(key, value interface{}) bool {
-			if data, ok := value.(memorySession); ok {
-				lastAccessTime := data.Get("lastAccessTime").(time.Time).Unix() + int64(data.Get("maxAge").(int))
-				if lastAccessTime < time.Now().Unix() {
-					logger.Debug("删除过期session")
-					m.data.Delete(key)
-				}
-			}
-			return true
-		})
-	}
-}
-
-func newMemoryDatabase() *MemoryDatabase {
-	database := &MemoryDatabase{
-		data:   sync.Map{},
-		config: newSessionConfig(),
-	}
-	go database.MemoryDatabaseGC()
-	return database
-}
-
-func (m *memorySession) Set(key string, value interface{}) {
-	(*m)[key] = value
-
-}
-
-func (m *memorySession) Get(key string) interface{} {
-	return (*m)[key]
-}
-
-func (m *memorySession) Delete(key string) {
-	delete(*m, key)
-}
-
-func (m *memorySession) Clear() {
-	*m = memorySession{"lastAccessTime": time.Now(), "maxAge": 0}
-}
-
-func (m *memorySession) Expire(maxAge int) {
-	(*m)["maxAge"] = maxAge
-}
-
-// 存储的客户端信息
+// ClientsInfo 存储的客户端信息
 type ClientsInfo struct {
 	lock sync.RWMutex
 	data map[string]*Ssh
@@ -772,82 +497,101 @@ var clients = ClientsInfo{
 type Login struct {
 	Id  int
 	Pwd string
-	Controller
 }
 
-// 登陆管理页面
-func (l Login) POST(context *HttpContext) {
-	pwd := context.Request.FormValue("pwd")
-
+// POST 登陆管理页面
+func (l Login) POST(c *gin.Context) {
+	pwd := c.DefaultPostForm("pwd", "")
 	row := db.QueryRow("select Id,Pwd from config where Id = 1")
-
 	login := new(Login)
 	err := row.Scan(&login.Id, &login.Pwd)
 	if err != nil {
 		logger.Error(err)
-		context.JSON(500, nil, failure, "login error")
+		c.JSON(500, gin.H{
+			"code": failure,
+			"msg":  "login error",
+		})
 		return
 	}
 
 	if login.Pwd != pwd {
-		context.JSON(401, nil, failure, "login password error")
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "login password error",
+		})
 		return
 	}
 
-	context.Session.Set("auth", "Y")
-	context.JSON(200, nil, succeed, "login success")
+	session := sessions.Default(c)
+
+	session.Set("auth", "Y")
+	//记着调用save方法，写入session
+	_ = session.Save()
+	c.JSON(200, gin.H{
+		"code": succeed,
+		"msg":  "login success",
+	})
 }
 
-// (需要登陆认证)修改登陆密码
-func (l Login) PATCH(context *HttpContext) {
-	auth := context.Session.Get("auth")
-	if auth == nil {
-		context.JSON(401, nil, failure, "Unauthorized")
+// PATCH (需要登陆认证)修改登陆密码
+func (l Login) PATCH(c *gin.Context) {
+	session := sessions.Default(c)
+	if session.Get("auth") != "Y" {
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "Unauthorized",
+		})
 		return
 	}
 
-	oldPwd := context.Request.FormValue("old_pwd")
-	newPwd := context.Request.FormValue("new_pwd")
-
-	row := db.QueryRow("select Id,Pwd from config where Id = 1")
-
+	oldPwd := c.PostForm("old_pwd")
+	newPwd := c.PostForm("new_pwd")
+	row := db.QueryRow(`select Id,Pwd from config where Id = 1`)
 	login := new(Login)
 	err := row.Scan(&login.Id, &login.Pwd)
 	if err != nil {
 		logger.Error(err)
-		context.JSON(500, nil, failure, "login error")
+		c.JSON(500, gin.H{
+			"code": failure,
+			"msg":  "change password error",
+		})
 		return
 	}
 
 	if login.Pwd != oldPwd {
-		context.JSON(401, nil, failure, "old password error")
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "change password error",
+		})
 		return
 	}
 
 	stmt, _ := db.Prepare(`update config set Pwd=? where id=1`)
 	_, err = stmt.Exec(newPwd)
 	if err != nil {
-		context.JSON(401, nil, failure, "modify password failure")
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "modify password failure",
+		})
 		return
 	}
-	context.JSON(200, nil, succeed, "modify password success")
+	c.JSON(200, gin.H{
+		"code": succeed,
+		"msg":  "modify password success",
+	})
 }
 
-func LoginHandler(response http.ResponseWriter, request *http.Request) {
-	context := newContext(&response, request)
-	context.Handler(Login{})
+// Status 主机状态
+type Status struct{}
 
-}
-
-type Status struct {
-	Controller
-}
-
-// (需要登陆认证)获取已经连接的主机信息
-func (s Status) GET(context *HttpContext) {
-	auth := context.Session.Get("auth")
-	if auth == nil {
-		context.JSON(401, nil, failure, "Unauthorized")
+// GET (需要登陆认证)获取已经连接的主机信息
+func (s Status) GET(c *gin.Context) {
+	session := sessions.Default(c)
+	if session.Get("auth") != "Y" {
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "Unauthorized",
+		})
 		return
 	}
 
@@ -855,15 +599,17 @@ func (s Status) GET(context *HttpContext) {
 	for _, item := range clients.data {
 		data = append(data, *item)
 	}
-
-	context.JSON(200, data, succeed, "ok")
+	c.JSON(200, gin.H{
+		"code": succeed,
+		"data": data,
+		"msg":  "ok",
+	})
 }
 
-// 更新已经连接的主机信息
-func (s Status) POST(context *HttpContext) {
-	_ = context.Request.ParseMultipartForm(32 << 20)
-
-	ids := context.Request.PostForm["ids"]
+// POST 更新已经连接的主机信息
+func (s Status) POST(c *gin.Context) {
+	ids := c.PostFormArray("ids")
+	fmt.Println(ids)
 	clients.lock.Lock()
 	defer clients.lock.Unlock()
 	for _, key := range ids {
@@ -872,26 +618,39 @@ func (s Status) POST(context *HttpContext) {
 			val.Timeout = time.Now()
 		}
 	}
-	context.JSON(200, ids, succeed, "ok")
+	c.JSON(200, gin.H{
+		"code": succeed,
+		"data": ids,
+		"msg":  "ok",
+	})
 }
 
-// (需要登陆认证)删除已经建立的连接
-func (s Status) DELETE(context *HttpContext) {
-	auth := context.Session.Get("auth")
-	if auth == nil {
-		context.JSON(401, nil, failure, "Unauthorized")
+// DELETE (需要登陆认证)删除已经建立的连接
+func (s Status) DELETE(c *gin.Context) {
+	session := sessions.Default(c)
+	if session.Get("auth") != "Y" {
+		c.JSON(401, gin.H{
+			"code": failure,
+			"msg":  "Unauthorized",
+		})
 		return
 	}
 
 	defer func() {
 		if err := recover(); err != nil {
-			context.JSON(500, nil, failure, "delete connect error")
+			c.JSON(500, gin.H{
+				"code": failure,
+				"msg":  "delete connect error",
+			})
 		}
 	}()
 
-	sessionId := context.Query("session_id")
+	sessionId := c.Query("session_id")
 	if sessionId == "" {
-		context.JSON(404, nil, failure, "session not exists")
+		c.JSON(404, gin.H{
+			"code": failure,
+			"msg":  "session not exists",
+		})
 		return
 	}
 
@@ -906,16 +665,13 @@ func (s Status) DELETE(context *HttpContext) {
 		clients.lock.Unlock()
 	}
 
-	context.JSON(200, nil, succeed, "delete connect success")
-}
-
-func StatusHandler(response http.ResponseWriter, request *http.Request) {
-	context := newContext(&response, request)
-	context.Handler(Status{})
+	c.JSON(200, gin.H{
+		"code": succeed,
+		"msg":  "delete connect success",
+	})
 }
 
 type Ssh struct {
-	Controller
 	IP         string          `json:"ip"`         //IP地址
 	Username   string          `json:"username"`   //用户名
 	Password   string          `json:"-"`          //密码
@@ -928,21 +684,6 @@ type Ssh struct {
 	sftpClient *sftp.Client    //sftp客户端
 	sshSession *ssh.Session    //ssh会话
 	ws         *websocket.Conn // websocket 连接
-
-}
-
-// 重写序列化方法
-func (s Ssh) MarshalJSON() ([]byte, error) {
-	type Alias Ssh
-	return json.Marshal(&struct {
-		Alias
-		Timeout   string `json:"timeout"`
-		StartTime string `json:"start_time"`
-	}{
-		Alias:     (Alias)(s),
-		Timeout:   s.Timeout.Format("2006-01-02 15:04:05"),
-		StartTime: s.StartTime.Format("2006-01-02 15:04:05"),
-	})
 }
 
 func NewClient(ip string, username string, password string, port int, shell, sessionId string) *Ssh {
@@ -956,6 +697,20 @@ func NewClient(ip string, username string, password string, port int, shell, ses
 	cli.Timeout = time.Now()
 	cli.StartTime = time.Now()
 	return cli
+}
+
+// MarshalJSON 重写序列化方法
+func (s Ssh) MarshalJSON() ([]byte, error) {
+	type Alias Ssh
+	return json.Marshal(&struct {
+		Alias
+		Timeout   string `json:"timeout"`
+		StartTime string `json:"start_time"`
+	}{
+		Alias:     (Alias)(s),
+		Timeout:   s.Timeout.Format("2006-01-02 15:04:05"),
+		StartTime: s.StartTime.Format("2006-01-02 15:04:05"),
+	})
 }
 
 // 连接主机
@@ -990,7 +745,7 @@ func (s *Ssh) connect() error {
 	return nil
 }
 
-// 运行一个终端
+// RunTerminal 运行一个终端
 func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reader, w, h int, ws *websocket.Conn) error {
 	if s.sshClient == nil {
 		if err := s.connect(); err != nil {
@@ -999,33 +754,33 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 		}
 	}
 
-	session, err := s.sshClient.NewSession()
+	sshSession, err := s.sshClient.NewSession()
 	if err != nil {
 		logger.Error(err.Error())
 		return err
 	}
 
-	s.sshSession = session
+	s.sshSession = sshSession
 	s.ws = ws
 
 	defer func() {
 		clients.lock.Lock()
 		delete(clients.data, s.SessionId)
 		clients.lock.Unlock()
-		_ = session.Close()
+		_ = sshSession.Close()
 	}()
 
-	session.Stdout = stdout
-	session.Stderr = stderr
-	session.Stdin = stdin
+	sshSession.Stdout = stdout
+	sshSession.Stderr = stderr
+	sshSession.Stdin = stdin
 
 	modes := ssh.TerminalModes{}
 
-	if err := session.RequestPty("xterm-256color", h, w, modes); err != nil {
+	if err := sshSession.RequestPty("xterm-256color", h, w, modes); err != nil {
 		return err
 	}
 
-	err = session.Run(shell)
+	err = sshSession.Run(shell)
 	if err != nil {
 		logger.Error(err.Error())
 		return err
@@ -1033,45 +788,50 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 	return nil
 }
 
-// 调整终端大小
-func (s *Ssh) Resize(context *HttpContext) {
-	w, err := strconv.Atoi(context.Query("w"))
+// Resize 调整终端大小
+func (s *Ssh) Resize(c *gin.Context) {
+	w, err := strconv.Atoi(c.Query("w"))
 	if err != nil || (w < 40 || w > 8192) {
-		context.JSON(400, nil, failure, "connect error window width !!!")
+		c.JSON(400, gin.H{
+			"code": failure,
+			"msg":  fmt.Sprintf("connect error window width !!!")})
 		return
 	}
-	h, err := strconv.Atoi(context.Query("h"))
+	h, err := strconv.Atoi(c.Query("h"))
 	if err != nil || (h < 2 || h > 4096) {
-		context.JSON(400, nil, failure, "connect error window height !!!")
+		c.JSON(400, gin.H{
+			"code": failure,
+			"msg":  fmt.Sprintf("connect error window width !!!")})
 		return
 	}
 
-	sessionId := context.Query("session_id")
+	sessionId := c.Query("session_id")
 
 	clients.lock.RLock()
 	cli, ok := clients.data[sessionId]
 	clients.lock.RUnlock()
 
-	if ok {
-		if cli.sshSession != nil {
-			_ = cli.sshSession.WindowChange(h, w)
-			str := fmt.Sprintf("W:%d;H:%d\n", w, h)
-			context.JSON(200, str, succeed, "ok")
-		} else {
-			context.JSON(200, nil, succeed, " resize session in the connection ")
-		}
+	if !ok || cli == nil {
+		c.JSON(299, gin.H{"code": failure, "msg": "the client is disconnected"})
 		return
 	}
-	context.JSON(400, nil, failure, "resize error")
 
+	if cli.sshSession != nil {
+		_ = cli.sshSession.WindowChange(h, w)
+		str := fmt.Sprintf("W:%d;H:%d\n", w, h)
+		c.JSON(200, gin.H{"code": succeed, "data": str, "msg": "ok"})
+		return
+	}
 }
 
-func SshHandler(response http.ResponseWriter, request *http.Request) {
+func SshHandler(c *gin.Context) {
+	var request = c.Request
+	var response = c.Writer
+
 	// 调整窗口大小
 	if request.Method == http.MethodPatch {
-		context := newContext(&response, request)
-		sshClient := Ssh{}
-		sshClient.Resize(context)
+		var sshObj = Ssh{}
+		sshObj.Resize(c)
 		return
 	}
 
@@ -1111,7 +871,6 @@ func SshHandler(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}).ServeHTTP(response, request)
-
 }
 
 type Host struct {
@@ -1128,10 +887,9 @@ type Host struct {
 	FontFamily  string `json:"font_family"`
 	CursorStyle string `json:"cursor_style"`
 	Shell       string `json:"shell"`
-	Controller
 }
 
-func (host Host) Select() ([]Host, error) {
+func (host *Host) Select() ([]Host, error) {
 	rows, err := db.Query(`select Id, Name, Address, User, Pwd, Port,FontSize, Background, Foreground, CursorColor, FontFamily, CursorStyle, Shell from host`)
 	var hostList []Host
 	if err != nil {
@@ -1149,7 +907,7 @@ func (host Host) Select() ([]Host, error) {
 	return hostList, nil
 }
 
-func (host Host) Insert(name, address, user, pwd string, port, fontSize int, background, foreground, cursorColor, fontFamily, cursorStyle, shell string) (int64, error) {
+func (host *Host) Insert(name, address, user, pwd string, port, fontSize int, background, foreground, cursorColor, fontFamily, cursorStyle, shell string) (int64, error) {
 	insertSql := `INSERT INTO host(Name, Address, User, Pwd, Port, FontSize, Background, Foreground, CursorColor, FontFamily, CursorStyle, Shell)  values(?,?,?,?,?,?,?,?,?,?,?,?)`
 	stmt, err := db.Prepare(insertSql)
 	if err != nil {
@@ -1166,7 +924,7 @@ func (host Host) Insert(name, address, user, pwd string, port, fontSize int, bac
 	return id, err
 }
 
-func (host Host) Update(id int, name, address, user, pwd string, port, fontSize int, background, foreground, cursorColor, fontFamily, cursorStyle, shell string) (int64, error) {
+func (host *Host) Update(id int, name, address, user, pwd string, port, fontSize int, background, foreground, cursorColor, fontFamily, cursorStyle, shell string) (int64, error) {
 
 	stmt, err := db.Prepare(`update host set Name=?, Address=?, User=?, Pwd=?, Port=?, FontSize=?, Background=?, Foreground=?, CursorColor=?, FontFamily=?, CursorStyle=?, Shell=?  where id=?`)
 	if err != nil {
@@ -1183,8 +941,8 @@ func (host Host) Update(id int, name, address, user, pwd string, port, fontSize 
 	return affect, err
 }
 
-func (host Host) Delete(id int) (int64, error) {
-	stmt, err := db.Prepare("delete from host where id=?")
+func (host *Host) Delete(id int) (int64, error) {
+	stmt, err := db.Prepare(`delete from host where id=?`)
 	if err != nil {
 		return 0, err
 	}
@@ -1199,22 +957,22 @@ func (host Host) Delete(id int) (int64, error) {
 	return affect, err
 }
 
-func (host Host) Verify(context *HttpContext) (Host, error) {
-	name := context.Query("name")
-	address := context.Query("address")
-	user := context.Query("user")
-	pwd := context.Query("pwd")
-	port := context.Query("port")
-	fontSize := context.Query("font_size")
-	background := context.Query("background")
-	foreground := context.Query("foreground")
-	cursorColor := context.Query("cursor_color")
-	fontFamily := context.Query("font_family")
-	cursorStyle := context.Query("cursor_style")
-	shell := context.Query("shell")
+func (host *Host) Verify(c *gin.Context) (Host, error) {
+	name := c.PostForm("name")
+	address := c.PostForm("address")
+	user := c.PostForm("user")
+	pwd := c.PostForm("pwd")
+	port := c.PostForm("port")
+	fontSize := c.PostForm("font_size")
+	background := c.PostForm("background")
+	foreground := c.PostForm("foreground")
+	cursorColor := c.PostForm("cursor_color")
+	fontFamily := c.PostForm("font_family")
+	cursorStyle := c.PostForm("cursor_style")
+	shell := c.PostForm("shell")
 
 	if len(name) > 60 || len(name) == 0 {
-		return Host{}, fmt.Errorf("name input error")
+		return Host{}, fmt.Errorf("name input error:%s.", name)
 	}
 
 	if len(address) > 60 || len(address) == 0 {
@@ -1284,67 +1042,67 @@ func (host Host) Verify(context *HttpContext) (Host, error) {
 	return hostInfo, nil
 }
 
-func (host Host) GET(context *HttpContext) {
+func (host *Host) GET(c *gin.Context) {
 	allHost, err := host.Select()
 	if err != nil {
-		context.JSON(500, nil, failure, err.Error())
-	} else {
-		context.JSON(200, allHost, succeed, "ok")
+		c.JSON(500, gin.H{"code": failure, "msg": err.Error()})
+		return
 	}
+	c.JSON(200, gin.H{"code": succeed, "data": allHost, "msg": "ok"})
 }
 
-func (host Host) POST(context *HttpContext) {
-	h, err := host.Verify(context)
+func (host *Host) POST(c *gin.Context) {
+	h, err := host.Verify(c)
 	if err != nil {
-		context.JSON(400, nil, failure, err.Error())
+		c.JSON(400, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
 	_, err = host.Insert(h.Name, h.Address, h.User, h.Pwd, h.Port, h.FontSize, h.Background, h.Foreground, h.CursorColor, h.FontFamily, h.CursorStyle, h.Shell)
 	if err != nil {
-		context.JSON(500, nil, failure, err.Error())
+		c.JSON(500, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
-	h.GET(context)
+	h.GET(c)
 }
 
-func (host Host) PUT(context *HttpContext) {
-	host, err := host.Verify(context)
+func (host *Host) PUT(c *gin.Context) {
+	h, err := host.Verify(c)
 	if err != nil {
-		context.JSON(400, nil, failure, err.Error())
+		c.JSON(400, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
-	id, err := strconv.Atoi(strings.TrimSpace(context.Request.PostFormValue("id")))
+	id, err := strconv.Atoi(strings.TrimSpace(c.PostForm("id")))
 	if err != nil {
-		context.JSON(400, nil, failure, err.Error())
+		c.JSON(400, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
 
-	_, err = host.Update(id, host.Name, host.Address, host.User, host.Pwd, host.Port, host.FontSize, host.Background, host.Foreground, host.CursorColor, host.FontFamily, host.CursorStyle, host.Shell)
+	_, err = host.Update(id, h.Name, h.Address, h.User, h.Pwd, h.Port, h.FontSize, h.Background, h.Foreground, h.CursorColor, h.FontFamily, h.CursorStyle, h.Shell)
 	if err != nil {
-		context.JSON(500, nil, failure, err.Error())
+		c.JSON(500, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
-	host.GET(context)
+	host.GET(c)
 }
 
-func (host Host) DELETE(context *HttpContext) {
-	id, err := strconv.Atoi(strings.TrimSpace(context.Request.PostFormValue("id")))
+func (host *Host) DELETE(c *gin.Context) {
+	id, err := strconv.Atoi(strings.TrimSpace(c.PostForm("id")))
 	if err != nil {
-		context.JSON(400, nil, failure, err.Error())
+		c.JSON(400, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
 	_, err = host.Delete(id)
 	if err != nil {
-		context.JSON(500, nil, failure, err.Error())
+		c.JSON(500, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
-	host.GET(context)
+	host.GET(c)
 }
 
-func (host Host) PATCH(context *HttpContext) {
-	h, err := host.Verify(context)
+func (host *Host) PATCH(c *gin.Context) {
+	h, err := host.Verify(c)
 	if err != nil {
-		context.JSON(400, nil, failure, err.Error())
+		c.JSON(400, gin.H{"code": failure, "msg": err.Error()})
 		return
 	}
 	sessionId := RandString(15)
@@ -1353,49 +1111,27 @@ func (host Host) PATCH(context *HttpContext) {
 	clients.lock.Lock()
 	clients.data[sessionId] = client
 	clients.lock.Unlock()
-	context.JSON(200, sessionId, succeed, "ok")
+	c.JSON(200, gin.H{"code": succeed, "data": sessionId, "msg": "ok"})
+
 }
 
-func HostHandler(response http.ResponseWriter, request *http.Request) {
-	context := newContext(&response, request)
-	context.Handler(Host{})
-}
+// Sftp 文件上传下载
+type Sftp struct{}
 
-// 文件上传下载
-type File struct {
-	Controller
-}
-
-// sftp 下载文件
-func (file File) POST(context *HttpContext) {
-	sessionId := context.Query("session_id")
-	fullPath := context.Query("path")
-	clients.lock.RLock()
-	defer clients.lock.RUnlock()
-	cli, ok := clients.data[sessionId]
-	if ok {
-		file, _ := cli.sftpClient.Open(fullPath)
-		defer func() {
-			_ = file.Close()
-		}()
-		_, _ = io.Copy(*context.Response, file)
-	}
-}
-
-// sftp 获取指定目录下文件信息
-func (file File) GET(context *HttpContext) {
-	dirPath := context.Query("path")
-	sessionId := context.Query("session_id")
+// GET sftp 获取指定目录下文件信息
+func (f Sftp) GET(c *gin.Context) {
+	dirPath := c.Query("path")
+	sessionId := c.Query("session_id")
 	clients.lock.RLock()
 	defer clients.lock.RUnlock()
 	cli, ok := clients.data[sessionId]
 	if !ok {
-		context.JSON(400, nil, failure, "list Folder error")
+		c.JSON(400, gin.H{"code": failure, "msg": "sftpClient error"})
 		return
 	}
 	files, err := cli.sftpClient.ReadDir(dirPath)
 	if err != nil {
-		context.JSON(400, nil, failure, "sftpClient error")
+		c.JSON(400, gin.H{"code": failure, "msg": "list Folder error"})
 		return
 	}
 
@@ -1453,15 +1189,31 @@ func (file File) GET(context *HttpContext) {
 		"current_dir": dirPath,
 	}
 
-	context.JSON(200, data, succeed, "ok")
+	c.JSON(200, gin.H{"code": succeed, "data": data, "msg": "ok"})
 }
 
-// sftp 上传文件
-func (file File) PUT(context *HttpContext) {
-	sessionId := context.Query("session_id")
-	dstPath := context.Query("path")
+// POST sftp 下载文件
+func (f Sftp) POST(c *gin.Context) {
+	sessionId := c.PostForm("session_id")
+	fullPath := c.PostForm("path")
+	clients.lock.RLock()
+	defer clients.lock.RUnlock()
+	cli, ok := clients.data[sessionId]
+	if ok {
+		file, _ := cli.sftpClient.Open(fullPath)
+		defer func() {
+			_ = file.Close()
+		}()
+		_, _ = io.Copy(c.Writer, file)
+	}
+}
+
+// PUT sftp 上传文件
+func (f Sftp) PUT(c *gin.Context) {
+	sessionId := c.PostForm("session_id")
+	dstPath := c.PostForm("path")
 	//获取上传的文件组
-	files := context.Request.MultipartForm.File["file"]
+	files := c.Request.MultipartForm.File["file"]
 
 	clients.lock.RLock()
 	defer clients.lock.RUnlock()
@@ -1476,47 +1228,11 @@ func (file File) PUT(context *HttpContext) {
 		}
 	}
 	msg := strconv.Itoa(len(files)) + "文件上传成功"
-	context.JSON(200, nil, succeed, msg)
+	c.JSON(200, gin.H{"code": succeed, "msg": msg})
+
 }
 
-func FileHandler(response http.ResponseWriter, request *http.Request) {
-	context := newContext(&response, request)
-	context.Handler(File{})
-}
-
-// 访问前端编译完成的静态文件
-func static(w http.ResponseWriter, r *http.Request) {
-
-	indexHtmlData, err := dir.ReadFile("webroot/index.html")
-	if err != nil {
-		_, _ = w.Write([]byte("read index.html file error"))
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	// 请求根路径
-	if strings.TrimSpace(r.URL.Path) == "/" {
-		_, _ = w.Write(indexHtmlData)
-		return
-	}
-
-	// 请求根路径下文件
-	fileFullPath := fmt.Sprintf("webroot%s", strings.TrimSpace(r.URL.Path))
-
-	mimeType := mime.TypeByExtension(filepath.Ext(fileFullPath))
-	w.Header().Set("Content-Type", mimeType)
-
-	data, err := dir.ReadFile(fileFullPath)
-	if err != nil {
-		// 如果出错直接返回index.html内容,避免出现404问题
-		_, _ = w.Write(indexHtmlData)
-		return
-	}
-	_, _ = w.Write(data)
-}
-
-/**
-清理已经断开的连接
-*/
+// ConnectGC 清理已经断开的连接
 func ConnectGC() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -1554,14 +1270,36 @@ func loadConfigFileData() {
 func Main() {
 	var err error
 
-	// 处理前端静态文件
-	http.HandleFunc("/", static)
+	//加入session中间件
+	engine.Use(sessionMiddleware())
+	engine.NoRoute(func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/gowebssh/")
+	})
 
-	http.HandleFunc("/api/login", LoginHandler)
-	http.HandleFunc("/api/host", HostHandler)
-	http.HandleFunc("/api/ssh", SshHandler)
-	http.HandleFunc("/api/file", FileHandler)
-	http.HandleFunc("/api/status", StatusHandler)
+	engine.POST("/api/login", Login{}.POST)
+	engine.PATCH("/api/login", Login{}.PATCH)
+
+	engine.GET("/api/status", Status{}.GET)
+	engine.POST("/api/status", Status{}.POST)
+	engine.DELETE("/api/status", Status{}.DELETE)
+
+	engine.GET("/api/host", (&Host{}).GET)
+	engine.POST("/api/host", (&Host{}).POST)
+	engine.PUT("/api/host", (&Host{}).PUT)
+	engine.PATCH("/api/host", (&Host{}).PATCH)
+	engine.DELETE("/api/host", (&Host{}).DELETE)
+
+	engine.GET("/api/file", Sftp{}.GET)
+	engine.POST("/api/file", Sftp{}.POST)
+	engine.PUT("/api/file", Sftp{}.PUT)
+
+	engine.Any("/api/ssh", SshHandler)
+
+	// 处理前端静态文件
+	engine.StaticFS("/gowebssh", http.FS(StaticFile{
+		embedFS: dir,
+		path:    "webroot",
+	}))
 
 	address := fmt.Sprintf("%s:%s", Config["server"]["Address"], Config["server"]["Port"])
 
@@ -1574,17 +1312,17 @@ func Main() {
 	// 如果证书和私钥文件存在,就使用https协议,否则使用http协议
 	if certErr == nil && keyErr == nil {
 		logger.Debug("https://{IP}:" + Config["server"]["Port"])
-		err = http.ListenAndServeTLS(address, certFile, keyFile, nil)
+		err = engine.RunTLS(address, certFile, keyFile)
 		if err != nil {
-			logger.Error("ListenAndServeTLSError:", err.Error())
+			logger.Error("RunServeTLSError:", err.Error())
 			os.Exit(1)
 			return
 		}
 	} else {
 		logger.Debug("http://{IP}:" + Config["server"]["Port"])
-		err = http.ListenAndServe(address, nil)
+		err = engine.Run(address)
 		if err != nil {
-			logger.Error("ListenAndServeError:", err.Error())
+			logger.Error("RunServeError:", err.Error())
 			os.Exit(1)
 			return
 		}
@@ -1626,8 +1364,7 @@ func init() {
 
 		configContent := `
 [app]
-AppName=god
-Key=` + RandString(64) + `
+AppName=GoWebSSH
 
 [server]
 Address=0.0.0.0
@@ -1636,7 +1373,7 @@ CertFile=` + path.Join(WorkDir, "cert.pem") + `
 KeyFile=` + path.Join(WorkDir, "key.key") + `
 
 [session]
-Store=memory
+Secret=` + RandString(64) + `
 Name=session_id
 Path=/
 Domain=
@@ -1701,6 +1438,23 @@ CREATE TABLE IF NOT EXISTS 'config'
 	_, err = stmt.Exec(1, "admin")
 
 	loadConfigFileData()
+}
+
+// StaticFile 嵌入普通的静态资源
+type StaticFile struct {
+	embedFS embed.FS // 静态资源
+	path    string   // 设置embed文件到静态资源的相对路径，也就是embed注释里的路径
+}
+
+// Open 静态资源被访问的核心逻辑
+func (w StaticFile) Open(name string) (fs.File, error) {
+	if filepath.Separator != '/' && strings.ContainsRune(name, filepath.Separator) {
+		return nil, errors.New("http: invalid character in file path")
+	}
+
+	fullName := filepath.Join(w.path, filepath.FromSlash(path.Clean("/"+name)))
+	file, err := w.embedFS.Open(fullName)
+	return file, err
 }
 
 func main() {

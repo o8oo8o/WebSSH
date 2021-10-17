@@ -254,7 +254,7 @@
                 <el-button
                   v-for="(item, index) in dir_info.paths"
                   :key="index"
-                  @click="listDir(item.dir)"
+                  @click="listDir(item.dir, current_host)"
                   >{{ item.name }}</el-button
                 >
               </el-button-group>
@@ -278,7 +278,7 @@
                     </el-button>
                     <el-button
                       v-if="scope.row.type === 'd'"
-                      @click="listDir(scope.row.path)"
+                      @click="listDir(scope.row.path, current_host)"
                       type="text"
                       size="small"
                       icon="el-icon-folder-opened"
@@ -943,13 +943,14 @@ function connectHost(host: Host) {
     data.current_host = { ...connHost };
 
     nextTick(() => {
-      connHost.term.open(
-        document.getElementById(connHost.session_id) as HTMLElement
-      );
+      let connectTabElement = document.getElementById(connHost.session_id);
 
-      (document.getElementById(
-        connHost.session_id
-      ) as HTMLElement).style.height =
+      if (connectTabElement === null) {
+        return;
+      }
+
+      connHost.term.open(connectTabElement);
+      connectTabElement.style.height =
         Math.floor(window.innerHeight - 70) + "px";
       connHost.fit.fit();
 
@@ -1041,9 +1042,13 @@ function windowResize() {
   }
 
   nextTick(() => {
-    (document.getElementById(
-      currentHost.session_id
-    ) as HTMLElement).style.height = Math.floor(window.innerHeight - 70) + "px";
+    let connectTabElement = document.getElementById(currentHost.session_id);
+
+    if (connectTabElement === null) {
+      return;
+    }
+    (connectTabElement as HTMLElement).style.height =
+      Math.floor(window.innerHeight - 70) + "px";
 
     currentHost.fit.fit();
     if (data.h !== currentHost.term.rows || data.w !== currentHost.term.cols) {
@@ -1082,7 +1087,7 @@ function reportConnectStatus() {
 
 // 跳转到管理页面
 function toManage() {
-  window.open("/#/manage", "_blank");
+  window.open("./#/manage", "_blank");
 }
 
 // 跳转到管理页面
