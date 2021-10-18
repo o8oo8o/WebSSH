@@ -609,7 +609,6 @@ func (s Status) GET(c *gin.Context) {
 // POST 更新已经连接的主机信息
 func (s Status) POST(c *gin.Context) {
 	ids := c.PostFormArray("ids")
-	fmt.Println(ids)
 	clients.lock.Lock()
 	defer clients.lock.Unlock()
 	for _, key := range ids {
@@ -1453,6 +1452,7 @@ func (w StaticFile) Open(name string) (fs.File, error) {
 	}
 
 	fullName := filepath.Join(w.path, filepath.FromSlash(path.Clean("/"+name)))
+	fullName = strings.ReplaceAll(fullName, `\`, `/`)
 	file, err := w.embedFS.Open(fullName)
 	return file, err
 }
