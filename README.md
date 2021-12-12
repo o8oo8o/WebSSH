@@ -8,11 +8,6 @@
 <br/>
 
 
-### 在线Demo：
-* [点我](https://www.huangrui.vip:12345)
-<br/>
-
-
 ### 目标：&nbsp;&nbsp;取代Xshell
 * 目前虽然只实现xshell部分功能,未来计划逐步更新
 <br/>
@@ -47,7 +42,7 @@
 <br/>
 
 ---
-### Quick start(大象装进冰箱只需3部)：
+### Quick start(大象装进冰箱只需3步)：
 >  必须使用golang 1.16以上版本,因为使用了Golang embed
 
 git clone https://github.com/o8oo8o/GoWebSSH.git
