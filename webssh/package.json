@@ -1,34 +1,30 @@
 {
   "name": "webssh",
-  "version": "0.1.0",
   "private": true,
+  "version": "2.0.0",
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "core-js": "^3.6.5",
-    "element-plus": "^1.0.2-beta.41",
-    "vue": "^3.0.11",
-    "vue-router": "^4.0.0-0",
-    "xterm": "^4.11.0",
+    "@element-plus/icons-vue": "^1.0.0",
+    "@types/node": "^17.0.21",
+    "element-plus": "^2.0.3",
+    "type-fest": "^2.12.0",
+    "vue": "^3.2.25",
+    "vue-router": "^4.0.12",
+    "xterm": "^4.17.0",
     "xterm-addon-attach": "^0.6.0",
     "xterm-addon-fit": "^0.5.0"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-router": "~4.5.0",
-    "@vue/cli-plugin-typescript": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/compiler-sfc": "^3.0.0",
-    "typescript": "~3.9.3",
-    "xterm": "^4.11.0",
-    "xterm-addon-attach": "^0.6.0",
-    "xterm-addon-fit": "^0.5.0"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+    "@types/node": "^17.0.21",
+    "@vitejs/plugin-vue": "^2.2.0",
+    "typescript": "^4.5.4",
+    "unplugin-auto-import": "^0.6.1",
+    "unplugin-vue-components": "^0.17.21",
+    "vite": "^2.8.0",
+    "vue-tsc": "^0.29.8"
+  }
 }

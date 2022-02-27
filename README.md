@@ -2,7 +2,7 @@
 <br/>
 
 ### 介绍：
-* Golang + Vue 实现一个Web版单文件的SSH管理工具
+* Golang + (Vue3 + Vite2)  实现一个Web版单文件的SSH管理工具
 * 借助于Golang embed,打包以后只有一个文件,简单高效
 * 使用及编译过程,超级简单,绝对保姆级
 <br/>
@@ -37,7 +37,7 @@
 
 ### 前端介绍：
 * 使用最新版Vue3 + TypeScript实现前端逻辑
-* 前端UI使用最近element-plus(目前还没有稳定版)
+* 前端UI使用最近element-plus最新稳定版
 * 基于最新版xterm.js + Websocket 实现终端
 <br/>
 

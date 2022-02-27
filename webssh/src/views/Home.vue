@@ -3,7 +3,7 @@
     <el-header
       style="
         text-align: left;
-        height: 28px;
+        height: 24px;
         padding-left: 0px;
         padding-right: 0px;
       "
@@ -13,35 +13,16 @@
           <el-button-group>
             <el-popover placement="bottom" trigger="click" :width="600">
               <template #reference>
-                <el-button type="primary" icon="el-icon-menu">打开</el-button>
+                <el-button type="primary" :icon="Menu">打开</el-button>
               </template>
-              <el-table :data="host_list" height="260">
-                <el-table-column
-                  fixed="left"
-                  width="150"
-                  property="name"
-                  label="名称"
-                ></el-table-column>
-                <el-table-column
-                  width="150"
-                  property="address"
-                  label="主机"
-                ></el-table-column>
-                <el-table-column
-                  width="100"
-                  property="user"
-                  label="用户"
-                ></el-table-column>
-                <el-table-column
-                  width="60"
-                  property="port"
-                  label="端口"
-                ></el-table-column>
+              <el-table :data="data.host_list" height="260">
+                <el-table-column fixed="left" width="150" property="name" label="名称"></el-table-column>
+                <el-table-column width="150" property="address" label="主机"></el-table-column>
+                <el-table-column width="100" property="user" label="用户"></el-table-column>
+                <el-table-column width="60" property="port" label="端口"></el-table-column>
                 <el-table-column label="操作" fixed="right" width="300">
                   <template #default="scope">
-                    <el-button size="mini" @click="editHost(scope.row)"
-                      >编辑</el-button
-                    >
+                    <el-button size="small" @click="editHost(scope.row)">编辑</el-button>
 
                     <el-popconfirm
                       confirmButtonText="删除"
@@ -52,41 +33,29 @@
                       @confirm="deleteHost(scope.row)"
                     >
                       <template #reference>
-                        <el-button size="mini" type="danger">删除</el-button>
+                        <el-button size="small" type="danger">删除</el-button>
                       </template>
                     </el-popconfirm>
 
-                    <el-button
-                      size="mini"
-                      type="primary"
-                      @click="connectHost(scope.row)"
-                      >连接</el-button
-                    >
+                    <el-button size="small" type="primary" @click="connectHost(scope.row)">连接</el-button>
                   </template>
                 </el-table-column>
               </el-table>
             </el-popover>
 
-            <el-button
-              type="primary"
-              @click="newHost"
-              icon="el-icon-circle-plus"
-              >新建</el-button
-            >
+            <el-button type="primary" @click="newHost" :icon="CirclePlus">新建</el-button>
 
-            <el-button type="primary" @click="toManage" icon="el-icon-s-custom"
-              >管理</el-button
-            >
+            <el-button type="primary" @click="toManage" :icon="Coin">管理</el-button>
 
             <el-dialog
-              :title="mode == 0 ? '新增主机' : '更新主机'"
-              v-model="host_dialog_visible"
+              :title="data.mode == 0 ? '新增主机' : '更新主机'"
+              v-model="data.host_dialog_visible"
               width="60%"
             >
               <el-form label-width="80px" ref="host_from" size="small">
                 <el-form-item label="名称" prop="name">
                   <el-input
-                    v-model.trim="name"
+                    v-model.trim="data.name"
                     minlength="1"
                     maxlength="30"
                     show-word-limit
@@ -95,7 +64,7 @@
                 </el-form-item>
                 <el-form-item label="主机" prop="address">
                   <el-input
-                    v-model.trim="address"
+                    v-model.trim="data.address"
                     minlength="1"
                     maxlength="60"
                     show-word-limit
@@ -106,7 +75,7 @@
                   <el-input
                     minlength="1"
                     maxlength="60"
-                    v-model.trim="user"
+                    v-model.trim="data.user"
                     show-word-limit
                     placeholder="请输入用户名"
                   ></el-input>
@@ -115,7 +84,7 @@
                   <el-input
                     minlength="1"
                     maxlength="60"
-                    v-model.trim="pwd"
+                    v-model.trim="data.pwd"
                     type="passrowd"
                     show-password
                     show-word-limit
@@ -126,30 +95,25 @@
                 <el-row>
                   <el-col :span="9">
                     <el-form-item label="端口" prop="port">
-                      <el-input-number
-                        v-model="port"
-                        :min="1"
-                        :max="65535"
-                        label="端口"
-                      ></el-input-number>
+                      <el-input-number v-model="data.port" :min="1" :max="65535" label="端口"></el-input-number>
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="5">
                     <el-form-item label="字体颜色">
-                      <el-color-picker v-model="foreground"></el-color-picker>
+                      <el-color-picker v-model="data.foreground"></el-color-picker>
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="5">
                     <el-form-item label="背景颜色">
-                      <el-color-picker v-model="background"></el-color-picker>
+                      <el-color-picker v-model="data.background"></el-color-picker>
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="5">
                     <el-form-item label="光标颜色">
-                      <el-color-picker v-model="cursor_color"></el-color-picker>
+                      <el-color-picker v-model="data.cursor_color"></el-color-picker>
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -159,7 +123,7 @@
                     <el-form-item label="字体">
                       <el-select
                         style="width: 130px"
-                        v-model="font_family"
+                        v-model="data.font_family"
                         placeholder="请选择字体"
                       >
                         <el-option label="Courier" value="Courier" />
@@ -173,10 +137,7 @@
 
                   <el-col :span="5">
                     <el-form-item label="字体大小">
-                      <el-select
-                        v-model="font_size"
-                        placeholder="请选择字体大小"
-                      >
+                      <el-select v-model="data.font_size" placeholder="请选择字体大小">
                         <el-option label="8" value="8" />
                         <el-option label="12" value="12" />
                         <el-option label="14" value="14" />
@@ -193,10 +154,7 @@
 
                   <el-col :span="5">
                     <el-form-item label="光标样式">
-                      <el-select
-                        v-model="cursor_style"
-                        placeholder="请选择光标样式"
-                      >
+                      <el-select v-model="data.cursor_style" placeholder="请选择光标样式">
                         <el-option label="块状" value="block" />
                         <el-option label="下划线" value="underline" />
                         <el-option label="竖线" value="bar" />
@@ -206,7 +164,7 @@
 
                   <el-col :span="5">
                     <el-form-item label="Shell">
-                      <el-select v-model="shell" placeholder="请选择Shell">
+                      <el-select v-model="data.shell" placeholder="请选择Shell">
                         <el-option label="bash" value="bash" />
                         <el-option label="csh" value="csh" />
                         <el-option label="zsh" value="zsh" />
@@ -217,112 +175,79 @@
               </el-form>
               <template #footer>
                 <span class="dialog-footer">
-                  <el-button @click="host_dialog_visible = false"
-                    >取消</el-button
-                  >
+                  <el-button @click="data.host_dialog_visible = false">取消</el-button>
                   <el-button type="success" @click="connect">连接</el-button>
                 </span>
                 &nbsp;&nbsp;&nbsp;&nbsp;
-
-                <span v-if="mode == 0" class="dialog-footer">
-                  <el-button type="primary" @click="createHost(false)"
-                    >保存</el-button
-                  >
-                  <el-button type="primary" @click="createHost(true)"
-                    >连接并保存</el-button
-                  >
+                <span
+                  v-if="data.mode == 0"
+                  class="dialog-footer"
+                >
+                  <el-button type="primary" @click="createHost(false)">保存</el-button>
+                  <el-button type="primary" @click="createHost(true)">连接并保存</el-button>
                 </span>
-                <span v-if="mode == 1" class="dialog-footer">
-                  <el-button type="primary" @click="updateHost(false)"
-                    >更新</el-button
-                  >
-                  <el-button type="primary" @click="updateHost(true)"
-                    >连接并更新</el-button
-                  >
+                <span v-if="data.mode == 1" class="dialog-footer">
+                  <el-button type="primary" @click="updateHost(false)">更新</el-button>
+                  <el-button type="primary" @click="updateHost(true)">连接并更新</el-button>
                 </span>
               </template>
             </el-dialog>
-            <el-dialog
-              v-model="file_dialog_visible"
-              width="80%"
-              custom-class="huang"
-            >
+            <el-dialog v-model="data.file_dialog_visible" width="80%" custom-class="file-dialog">
               <template #title>
                 <span v-html="title"></span>
               </template>
               <el-button-group>
                 <el-button
-                  v-for="(item, index) in dir_info.paths"
+                  v-for="(item, index) in data.dir_info.paths"
                   :key="index"
-                  @click="listDir(item.dir, current_host)"
-                  >{{ item.name }}</el-button
-                >
+                  @click="listDir(item.dir, data.current_host)"
+                >{{ item.name }}</el-button>
               </el-button-group>
 
-              <el-table :data="dir_info.files" height="400">
-                <el-table-column
-                  prop="name"
-                  label="文件名"
-                  fixed="left"
-                  sortable
-                >
+              <el-table :data="data.dir_info.files" height="400">
+                <el-table-column prop="name" label="文件名" fixed="left" sortable>
                   <template #default="scope">
                     <el-button
                       v-if="scope.row.type === 'f'"
                       @click="downloadFile(scope.row)"
                       type="text"
                       size="small"
-                      icon="el-icon-tickets"
+                      :icon="Files"
                       style="color: green"
-                      >{{ scope.row.name }}
-                    </el-button>
+                    >{{ scope.row.name }}</el-button>
                     <el-button
                       v-if="scope.row.type === 'd'"
-                      @click="listDir(scope.row.path, current_host)"
+                      @click="listDir(scope.row.path, data.current_host)"
                       type="text"
                       size="small"
-                      icon="el-icon-folder-opened"
-                      >{{ scope.row.name }}
-                    </el-button>
+                      :icon="FolderOpened"
+                    >{{ scope.row.name }}</el-button>
                   </template>
                 </el-table-column>
-                <el-table-column prop="size" label="大小" width="100" sortable>
-                </el-table-column>
-                <el-table-column
-                  prop="mode"
-                  label="权限"
-                  width="100"
-                  sortable
-                ></el-table-column>
-                <el-table-column
-                  prop="mod_time"
-                  label="修改日期"
-                  width="180"
-                  sortable
-                ></el-table-column>
+                <el-table-column prop="size" label="大小" width="100" sortable></el-table-column>
+                <el-table-column prop="mode" label="权限" width="100" sortable></el-table-column>
+                <el-table-column prop="mod_time" label="修改日期" width="180" sortable></el-table-column>
                 <el-table-column label="操作" width="100" fixed="right">
                   <template #default="scope">
                     <el-button
                       v-if="scope.row.type == 'f'"
                       @click="downloadFile(scope.row)"
                       type="success"
-                      icon="el-icon-download"
-                      >下载</el-button
-                    >
+                      :icon="Bottom"
+                    >下载</el-button>
                     <el-button
                       v-else
                       type="primary"
-                      icon="el-icon-upload2"
+                      :icon="Upload"
                       @click="uploadFile(scope.row)"
-                      >上传</el-button
-                    >
+                    >上传</el-button>
                   </template>
                 </el-table-column>
               </el-table>
             </el-dialog>
           </el-button-group>
         </el-col>
-        <el-col :span="6"> </el-col>
+        <el-col :span="6"></el-col>
         <el-col :span="6" style="text-align: right">
           <el-button type="success" @click="toGitHub">GitHub</el-button>
         </el-col>
@@ -330,14 +255,14 @@
     </el-header>
     <div>
       <el-tabs
-        v-model="current_host.session_id"
+        v-model="data.current_host.session_id"
         type="card"
         closable
         @tab-remove="removeTab"
         @tab-click="selectTab"
       >
         <el-tab-pane
-          v-for="item in host_tabs"
+          v-for="item in data.host_tabs"
           :key="item.session_id"
           :label="item.name"
           :name="item.session_id"
@@ -349,12 +274,11 @@
                   <el-button
                     round
                     :type="
-                      item.session_id === current_host.session_id
+                      item.session_id === data.current_host.session_id
                         ? 'primary'
                         : 'info'
                     "
-                    >{{ item.name }}</el-button
-                  >
+                  >{{ item.name }}</el-button>
                 </template>
                 <div>
                   <div>
@@ -380,21 +304,16 @@
                 </div>
               </el-popover>
 
-              <el-tooltip
-                class="item"
-                effect="dark"
-                content="文件传输"
-                placement="top"
-              >
+              <el-tooltip class="item" effect="dark" content="文件传输" placement="top">
                 <el-button
                   round
                   :type="
-                    item.session_id === current_host.session_id
+                    item.session_id === data.current_host.session_id
                       ? 'primary'
                       : 'info'
                   "
                   @click="listDir('/', item)"
-                  icon="el-icon-sort"
+                  :icon="Sort"
                 ></el-button>
               </el-tooltip>
             </el-button-group>
@@ -411,26 +330,22 @@
 </template>
 
 
-<script lang="ts">
+<script setup lang="ts">
 import "xterm/css/xterm.css";
 
 import {
   computed,
-  defineComponent,
   nextTick,
   onMounted,
-  reactive,
-  ref,
-  toRefs,
-  watch,
-  watchEffect,
+  reactive
 } from "vue";
 import xhttp, { Xhttp } from "../xhttp";
 import { Terminal } from "xterm";
 import { AttachAddon } from "xterm-addon-attach";
 import { FitAddon } from "xterm-addon-fit";
 import { ElMessage, ElPopover } from "element-plus";
-import { Router, useRoute, useRouter } from "vue-router";
+import { Router, useRouter } from "vue-router";
+import { FolderOpened, Files, Bottom, Upload, Menu, CirclePlus, Coin, Sort } from '@element-plus/icons-vue'
 
 let route: Router;
 
@@ -951,13 +866,12 @@ function connectHost(host: Host) {
 
       connHost.term.open(connectTabElement);
       connectTabElement.style.height =
-        Math.floor(window.innerHeight - 70) + "px";
+        Math.floor(window.innerHeight - 65) + "px";
       connHost.fit.fit();
 
       let param = `h=${connHost.term.rows}&w=${connHost.term.cols}&session_id=${connHost.session_id}`;
-      let sock_url = `${location.protocol == "http:" ? "ws://" : "wss://"}${
-        location.host
-      }/api/ssh?${param}`;
+      let sock_url = `${location.protocol == "http:" ? "ws://" : "wss://"}${location.host
+        }/api/ssh?${param}`;
 
       connHost.term.loadAddon(new AttachAddon(new WebSocket(sock_url)));
 
@@ -970,10 +884,10 @@ function connectHost(host: Host) {
 /**
  * 删除tab
  */
-function removeTab(tabId: string) {
+function removeTab(tabId: string | number) {
   let removeIndex = 0;
   data.host_tabs.forEach((host, index) => {
-    if (host.session_id === tabId) {
+    if (host.session_id === String(tabId)) {
       removeIndex = index;
     }
   });
@@ -1064,7 +978,9 @@ function windowResize() {
   });
 }
 
-// 报告连接状态
+/**
+ * 报告连接状态
+ */
 function reportConnectStatus() {
   setInterval(function () {
     let fm = new FormData();
@@ -1085,54 +1001,37 @@ function reportConnectStatus() {
   }, 10000);
 }
 
-// 跳转到管理页面
+
+/**
+ * 跳转到管理页面
+ */
 function toManage() {
   window.open("./#/manage", "_blank");
 }
 
-// 跳转到管理页面
+/**
+ * 跳转到GitHub
+ */
 function toGitHub() {
   window.open("https://github.com/o8oo8o/GoWebSSH", "_blank");
 }
 
-export default defineComponent({
-  name: "terminal",
 
-  setup(props: any, context) {
-    onMounted(() => {
-      route = useRouter();
-      reportConnectStatus();
-      getallHost();
-      window.onresize = windowResize;
-      window.onbeforeunload = function () {
-        return "关闭吗";
-      };
-    });
-    return {
-      ...toRefs(data),
-      title,
-      connect,
-      newHost,
-      editHost,
-      listDir,
-      uploadFile,
-      downloadFile,
-      createHost,
-      updateHost,
-      deleteHost,
-      connectHost,
-      removeTab,
-      selectTab,
-      toManage,
-      toGitHub,
-    };
-  },
+onMounted(() => {
+  route = useRouter();
+  reportConnectStatus();
+  getallHost();
+  window.onresize = windowResize;
+  window.onbeforeunload = function () {
+    return "关闭吗";
+  };
 });
+
 </script>
 
 
 <style scoped>
-.huang {
+.file-dialog {
   margin-top: 0px;
 }
 </style>

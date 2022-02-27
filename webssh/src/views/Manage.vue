@@ -19,7 +19,7 @@
           <el-table-column fixed="right" label="操作">
             <template #default="scope">
               <el-button
-                size="mini"
+                size="small"
                 type="danger"
                 @click="disconnect(scope.$index, scope.row)"
                 >断开</el-button
