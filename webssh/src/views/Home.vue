@@ -984,7 +984,6 @@ function windowResize() {
 function reportConnectStatus() {
   setInterval(function () {
     let fm = new FormData();
-    let sessionIdList = new Array<string>();
     data.host_tabs.forEach((hont) => {
       fm.append("ids", hont.session_id);
     });

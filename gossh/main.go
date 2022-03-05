@@ -11,6 +11,7 @@ import (
 	"gossh/lib/gin"
 	"gossh/lib/gin/sessions"
 	"gossh/lib/gin/sessions/cookie"
+	"gossh/lib/gin/sse"
 	"gossh/lib/sftp"
 	_ "gossh/lib/sqlite3"
 	"gossh/lib/websocket"
@@ -587,23 +588,44 @@ type Status struct{}
 // GET (需要登陆认证)获取已经连接的主机信息
 func (s Status) GET(c *gin.Context) {
 	session := sessions.Default(c)
+
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Connection", "keep-alive")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Content-Type", "text/event-stream")
+
 	if session.Get("auth") != "Y" {
-		c.JSON(401, gin.H{
-			"code": failure,
-			"msg":  "Unauthorized",
+		c.Render(200, sse.Event{
+			Id:    "401",
+			Event: "message",
+			Retry: 10000,
+			Data: map[string]interface{}{
+				"code": failure,
+				"msg":  "Unauthorized",
+			},
 		})
 		return
 	}
 
-	var data []Ssh
-	for _, item := range clients.data {
-		data = append(data, *item)
+	for {
+		c.Writer.(http.Flusher).Flush()
+		time.Sleep(time.Second * 3)
+		var data []Ssh
+		for _, item := range clients.data {
+			data = append(data, *item)
+		}
+		c.Render(200, sse.Event{
+			Id:    "200",
+			Event: "message",
+			Retry: 10000,
+			Data: map[string]interface{}{
+				"code": succeed,
+				"data": data,
+				"msg":  "ok",
+			},
+		})
 	}
-	c.JSON(200, gin.H{
-		"code": succeed,
-		"data": data,
-		"msg":  "ok",
-	})
+
 }
 
 // POST 更新已经连接的主机信息

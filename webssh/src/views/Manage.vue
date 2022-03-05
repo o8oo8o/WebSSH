@@ -3,27 +3,18 @@
     <el-tabs v-model="active_name" type="card">
       <el-tab-pane label="连接状态" name="connectInfo">
         <el-table :data="host_list" style="width: 100%">
-          <el-table-column fixed prop="ip" label="地址" width="250">
-          </el-table-column>
-          <el-table-column prop="username" label="用户名" width="180">
-          </el-table-column>
-          <el-table-column prop="port" label="端口"> </el-table-column>
-          <el-table-column prop="shell" label="shell"> </el-table-column>
+          <el-table-column fixed prop="ip" label="地址" width="250"></el-table-column>
+          <el-table-column prop="username" label="用户名" width="180"></el-table-column>
+          <el-table-column prop="port" label="端口"></el-table-column>
+          <el-table-column prop="shell" label="shell"></el-table-column>
 
-          <el-table-column prop="session_id" label="会话ID" width="200">
-          </el-table-column>
+          <el-table-column prop="session_id" label="会话ID" width="200"></el-table-column>
 
-          <el-table-column prop="start_time" label="连接创建时间" width="150">
-          </el-table-column>
+          <el-table-column prop="start_time" label="连接创建时间" width="150"></el-table-column>
 
           <el-table-column fixed="right" label="操作">
             <template #default="scope">
-              <el-button
-                size="small"
-                type="danger"
-                @click="disconnect(scope.$index, scope.row)"
-                >断开</el-button
-              >
+              <el-button size="small" type="danger" @click="disconnect(scope.$index, scope.row)">断开</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -32,28 +23,13 @@
         <el-container>
           <el-form label-width="100px">
             <el-form-item label="旧密码">
-              <el-input
-                type="password"
-                minlength="1"
-                maxlength="64"
-                v-model.trim="old_password"
-              ></el-input>
+              <el-input type="password" minlength="1" maxlength="64" v-model.trim="old_password"></el-input>
             </el-form-item>
             <el-form-item label="新密码">
-              <el-input
-                type="password"
-                minlength="1"
-                maxlength="64"
-                v-model.trim="new_password_a"
-              ></el-input>
+              <el-input type="password" minlength="1" maxlength="64" v-model.trim="new_password_a"></el-input>
             </el-form-item>
             <el-form-item label="新密码">
-              <el-input
-                type="password"
-                minlength="1"
-                maxlength="64"
-                v-model.trim="new_password_b"
-              ></el-input>
+              <el-input type="password" minlength="1" maxlength="64" v-model.trim="new_password_b"></el-input>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="changePassword">提交</el-button>
@@ -68,11 +44,7 @@
       <el-form label-width="80px" class="login-box">
         <h3 class="login-title">请登录</h3>
         <el-form-item label="密码">
-          <el-input
-            type="password"
-            placeholder="请输入密码"
-            v-model="password"
-          />
+          <el-input type="password" placeholder="请输入密码" v-model="password" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="login">登录</el-button>
@@ -87,20 +59,12 @@
 import "xterm/css/xterm.css";
 
 import {
-  computed,
   defineComponent,
-  nextTick,
   onMounted,
   reactive,
-  ref,
-  toRefs,
-  watch,
-  watchEffect,
+  toRefs
 } from "vue";
 import xhttp, { Xhttp } from "../xhttp";
-import { Terminal } from "xterm";
-import { AttachAddon } from "xterm-addon-attach";
-import { FitAddon } from "xterm-addon-fit";
 import { ElMessage, ElMessageBox, ElPopover } from "element-plus";
 import { Router, useRoute, useRouter } from "vue-router";
 
@@ -122,7 +86,7 @@ interface HostInfo {
 
 let data = reactive({
   active_name: "connectInfo",
-  host_list: [] as Array<HostInfo>,
+  host_list: Array<HostInfo>(),
   is_login: false,
   password: "",
 
@@ -131,6 +95,12 @@ let data = reactive({
   new_password_b: "",
 
 });
+
+interface OnlineInfo {
+  code: number,
+  msg: string,
+  data: Array<HostInfo>
+}
 
 /**
  * 断开链接
@@ -148,22 +118,16 @@ function disconnect(index: number, row: HostInfo) {
 }
 
 function getStatus() {
-  let xhttp = new Xhttp();
-  xhttp
-    .get("/api/status")
-    .then((response) => {
-      if (response.status === 401) {
-        // alert("没有登陆");
-        data.is_login = false;
-      }
-      return response.json();
-    })
-    .then((json) => {
-      if (json.code === 0) {
+  if (data.is_login) {
+    var source = new EventSource('/api/status');
+    source.onmessage = function (event) {
+      let onlineInfo = JSON.parse(event.data) as OnlineInfo;
+      if (onlineInfo.code === 0) {
         data.is_login = true;
-        data.host_list = json.data;
+        data.host_list = onlineInfo.data;
       }
-    });
+    };
+  }
 }
 
 function login() {
@@ -223,13 +187,6 @@ function changePassword() {
     });
 }
 
-// 报告连接状态
-function refreshConnectInfo() {
-  if (data.is_login) {
-    getStatus();
-    setInterval(getStatus, 10000);
-  }
-}
 
 export default defineComponent({
   name: "manage",
