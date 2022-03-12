@@ -77,11 +77,54 @@ go build
 * cert.pem HTTPS服务器证书文件
 * key.key  HTTPS服务器私钥文件
 
+<br/>
+
 ### 注意: 
 * 当程序检测到cert.pem 和 key.key 文件,会使用https协议,否则使用http协议
 * 用户只需把证书文件和私钥文件放到 .GoWebSSH 目录就可以了
 
+<br/>
 
+### 求助: 
+* 为了方便有一个在线demo,求助一个低配版云主机
+
+<br/>
+
+### Systemd 方式启动: 
+```shell
+cat > /etc/systemd/system/gowebapp.service << "END"
+##################################
+[Unit]
+Description=GoWebApp
+After=network.target
+
+[Service]
+Type=simple
+User=root
+
+## 注:根据可执行文件路径修改
+ExecStart=/usr/local/GoWebSSH
+
+# auto restart
+StartLimitIntervalSec=0
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
+##################################
+END
+
+
+systemctl daemon-reload
+
+systemctl start gowebapp.service
+
+systemctl enable gowebapp.service
+
+```
+
+<br/>
 
 ---
 ### 演示截图：
