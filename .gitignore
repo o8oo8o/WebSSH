@@ -120,3 +120,6 @@ Thumbs.db
 
 .idea
 *.iml
+/gossh/go.sum
+/gossh/gossh
+/gossh/GoWebSSH.db

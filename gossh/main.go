@@ -7,14 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gossh/lib/crypto/ssh"
-	"gossh/lib/gin"
-	"gossh/lib/gin/sessions"
-	"gossh/lib/gin/sessions/cookie"
-	"gossh/lib/gin/sse"
-	"gossh/lib/sftp"
-	_ "gossh/lib/sqlite3"
-	"gossh/lib/websocket"
 	"io"
 	"io/fs"
 	"log"
@@ -28,6 +20,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/sse"
+	"github.com/gin-gonic/gin"
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/websocket"
+	_ "modernc.org/sqlite"
 )
 
 const (
@@ -1411,7 +1412,7 @@ SameSite=2
 		_ = file.Sync()
 	}
 
-	db, err = sql.Open("sqlite3", path.Join(WorkDir, projectName+".db"))
+	db, err = sql.Open("sqlite", path.Join(WorkDir, projectName+".db"))
 	if err != nil {
 		logger.Error(fmt.Sprintf("创建数据库文件:%s失败\n", path.Join(WorkDir, projectName+".db")))
 		os.Exit(1)
