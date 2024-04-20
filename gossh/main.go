@@ -610,21 +610,26 @@ func (s Status) GET(c *gin.Context) {
 	for {
 		c.Writer.(http.Flusher).Flush()
 		time.Sleep(time.Second * 3)
-		var data []SshInfo
-		clients.Range(func(key, value interface{}) bool {
-			data = append(data, value.(*Ssh).GetSshInfo())
-			return true
-		})
-		c.Render(200, sse.Event{
-			Id:    "200",
-			Event: "message",
-			Retry: 10000,
-			Data: map[string]interface{}{
-				"code": succeed,
-				"data": data,
-				"msg":  "ok",
-			},
-		})
+		select {
+		case <-c.Request.Context().Done():
+			return
+		default:
+			var data []SshInfo
+			clients.Range(func(key, value interface{}) bool {
+				data = append(data, value.(*Ssh).GetSshInfo())
+				return true
+			})
+			c.Render(200, sse.Event{
+				Id:    "200",
+				Event: "message",
+				Retry: 10000,
+				Data: map[string]interface{}{
+					"code": succeed,
+					"data": data,
+					"msg":  "ok",
+				},
+			})
+		}
 	}
 
 }
