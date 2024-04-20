@@ -7,14 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gossh/lib/crypto/ssh"
-	"gossh/lib/gin"
-	"gossh/lib/gin/sessions"
-	"gossh/lib/gin/sessions/cookie"
-	"gossh/lib/gin/sse"
-	"gossh/lib/sftp"
-	_ "gossh/lib/sqlite3"
-	"gossh/lib/websocket"
 	"io"
 	"io/fs"
 	"log"
@@ -28,6 +20,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/sse"
+	"github.com/gin-gonic/gin"
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/net/websocket"
+	_ "modernc.org/sqlite"
 )
 
 const (
@@ -49,6 +50,7 @@ const (
 var engine = gin.Default()
 
 // 使用go 1.16+ 新特性
+//
 //go:embed webroot
 var dir embed.FS
 
@@ -486,13 +488,11 @@ func LoadConfig(filename string, comment []string) (configFile, error) {
 
 // ClientsInfo 存储的客户端信息
 type ClientsInfo struct {
-	lock sync.RWMutex
-	data map[string]*Ssh
+	*sync.Map
 }
 
 var clients = ClientsInfo{
-	lock: sync.RWMutex{},
-	data: make(map[string]*Ssh),
+	&sync.Map{},
 }
 
 type Login struct {
@@ -610,20 +610,26 @@ func (s Status) GET(c *gin.Context) {
 	for {
 		c.Writer.(http.Flusher).Flush()
 		time.Sleep(time.Second * 3)
-		var data []Ssh
-		for _, item := range clients.data {
-			data = append(data, *item)
+		select {
+		case <-c.Request.Context().Done():
+			return
+		default:
+			var data []SshInfo
+			clients.Range(func(key, value interface{}) bool {
+				data = append(data, value.(*Ssh).GetSshInfo())
+				return true
+			})
+			c.Render(200, sse.Event{
+				Id:    "200",
+				Event: "message",
+				Retry: 10000,
+				Data: map[string]interface{}{
+					"code": succeed,
+					"data": data,
+					"msg":  "ok",
+				},
+			})
 		}
-		c.Render(200, sse.Event{
-			Id:    "200",
-			Event: "message",
-			Retry: 10000,
-			Data: map[string]interface{}{
-				"code": succeed,
-				"data": data,
-				"msg":  "ok",
-			},
-		})
 	}
 
 }
@@ -631,12 +637,10 @@ func (s Status) GET(c *gin.Context) {
 // POST 更新已经连接的主机信息
 func (s Status) POST(c *gin.Context) {
 	ids := c.PostFormArray("ids")
-	clients.lock.Lock()
-	defer clients.lock.Unlock()
 	for _, key := range ids {
-		val, ok := clients.data[key]
+		val, ok := clients.Load(key)
 		if ok {
-			val.Timeout = time.Now()
+			val.(*Ssh).UpTimeout()
 		}
 	}
 	c.JSON(200, gin.H{
@@ -675,15 +679,13 @@ func (s Status) DELETE(c *gin.Context) {
 		return
 	}
 
-	sshConn, ok := clients.data[sessionId]
+	sshConn, ok := clients.Load(sessionId)
 	if ok {
-		_ = sshConn.sshClient.Close()
-		_ = sshConn.sftpClient.Close()
-		_ = sshConn.sshSession.Close()
-		_ = sshConn.ws.Close()
-		clients.lock.Lock()
-		delete(clients.data, sessionId)
-		clients.lock.Unlock()
+		_ = sshConn.(*Ssh).sshClient.Close()
+		_ = sshConn.(*Ssh).sftpClient.Close()
+		_ = sshConn.(*Ssh).sshSession.Close()
+		_ = sshConn.(*Ssh).ws.Close()
+		clients.Delete(sessionId)
 	}
 
 	c.JSON(200, gin.H{
@@ -692,19 +694,43 @@ func (s Status) DELETE(c *gin.Context) {
 	})
 }
 
+type SshInfo struct {
+	IP        string    `json:"ip"`         //IP地址
+	Username  string    `json:"username"`   //用户名
+	Password  string    `json:"-"`          //密码
+	Port      int       `json:"port"`       //端口号
+	SessionId string    `json:"session_id"` //会话ID
+	Shell     string    `json:"shell"`
+	StartTime time.Time `json:"start_time"` // 建立连接的时间
+}
+
 type Ssh struct {
-	IP         string          `json:"ip"`         //IP地址
-	Username   string          `json:"username"`   //用户名
-	Password   string          `json:"-"`          //密码
-	Port       int             `json:"port"`       //端口号
-	SessionId  string          `json:"session_id"` //会话ID
-	Shell      string          `json:"shell"`
+	SshInfo
 	Timeout    time.Time       `json:"timeout"`
-	StartTime  time.Time       `json:"start_time"` // 建立连接的时间
 	sshClient  *ssh.Client     //ssh客户端
 	sftpClient *sftp.Client    //sftp客户端
 	sshSession *ssh.Session    //ssh会话
 	ws         *websocket.Conn // websocket 连接
+
+	lock *sync.RWMutex
+}
+
+func (s *Ssh) GetTimeout() time.Time {
+	s.lock.RLock()
+	timeout := s.Timeout
+	s.lock.RUnlock()
+	return timeout
+}
+
+func (s *Ssh) GetSshInfo() SshInfo {
+	return s.SshInfo
+}
+
+func (s *Ssh) UpTimeout() {
+	s.lock.Lock()
+	s.Timeout = time.Now()
+	s.lock.Unlock()
+	return
 }
 
 func NewClient(ip string, username string, password string, port int, shell, sessionId string) *Ssh {
@@ -716,7 +742,8 @@ func NewClient(ip string, username string, password string, port int, shell, ses
 	cli.Shell = shell
 	cli.SessionId = sessionId
 	cli.Timeout = time.Now()
-	cli.StartTime = time.Now()
+	cli.StartTime = time.Now().Round(time.Second)
+	cli.lock = &sync.RWMutex{}
 	return cli
 }
 
@@ -785,9 +812,7 @@ func (s *Ssh) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.Reade
 	s.ws = ws
 
 	defer func() {
-		clients.lock.Lock()
-		delete(clients.data, s.SessionId)
-		clients.lock.Unlock()
+		clients.Delete(s.SessionId)
 		_ = sshSession.Close()
 	}()
 
@@ -828,17 +853,14 @@ func (s *Ssh) Resize(c *gin.Context) {
 
 	sessionId := c.Query("session_id")
 
-	clients.lock.RLock()
-	cli, ok := clients.data[sessionId]
-	clients.lock.RUnlock()
-
+	cli, ok := clients.Load(sessionId)
 	if !ok || cli == nil {
 		c.JSON(299, gin.H{"code": failure, "msg": "the client is disconnected"})
 		return
 	}
 
-	if cli.sshSession != nil {
-		_ = cli.sshSession.WindowChange(h, w)
+	if cli.(*Ssh).sshSession != nil {
+		_ = cli.(*Ssh).sshSession.WindowChange(h, w)
 		str := fmt.Sprintf("W:%d;H:%d\n", w, h)
 		c.JSON(200, gin.H{"code": succeed, "data": str, "msg": "ok"})
 		return
@@ -862,32 +884,24 @@ func SshHandler(c *gin.Context) {
 		w, err := strconv.Atoi(ws.Request().URL.Query().Get("w"))
 		if err != nil || (w < 40 || w > 8192) {
 			_ = websocket.Message.Send(ws, "connect error window width !!!")
-			clients.lock.Lock()
-			delete(clients.data, sessionId)
-			clients.lock.Unlock()
+			clients.Delete(sessionId)
 			_ = ws.Close()
 			return
 		}
 		h, err := strconv.Atoi(ws.Request().URL.Query().Get("h"))
 		if err != nil || (h < 2 || h > 4096) {
 			_ = websocket.Message.Send(ws, "connect error window height !!!")
-			clients.lock.Lock()
-			delete(clients.data, sessionId)
-			clients.lock.Unlock()
+			clients.Delete(sessionId)
 			_ = ws.Close()
 			return
 		}
 
-		clients.lock.RLock()
-		cli := clients.data[sessionId]
-		clients.lock.RUnlock()
+		cli, _ := clients.Load(sessionId)
 
-		err = cli.RunTerminal(cli.Shell, ws, ws, ws, w, h, ws)
+		err = cli.(*Ssh).RunTerminal(cli.(*Ssh).Shell, ws, ws, ws, w, h, ws)
 		if err != nil {
 			_ = websocket.Message.Send(ws, "connect error!!!")
-			clients.lock.Lock()
-			delete(clients.data, sessionId)
-			clients.lock.Unlock()
+			clients.Delete(sessionId)
 			_ = ws.Close()
 			return
 		}
@@ -1129,9 +1143,7 @@ func (host *Host) PATCH(c *gin.Context) {
 	sessionId := RandString(15)
 	client := NewClient(h.Address, h.User, h.Pwd, h.Port, h.Shell, sessionId)
 
-	clients.lock.Lock()
-	clients.data[sessionId] = client
-	clients.lock.Unlock()
+	clients.Store(sessionId, client)
 	c.JSON(200, gin.H{"code": succeed, "data": sessionId, "msg": "ok"})
 
 }
@@ -1143,14 +1155,12 @@ type Sftp struct{}
 func (f Sftp) GET(c *gin.Context) {
 	dirPath := c.Query("path")
 	sessionId := c.Query("session_id")
-	clients.lock.RLock()
-	defer clients.lock.RUnlock()
-	cli, ok := clients.data[sessionId]
+	cli, ok := clients.Load(sessionId)
 	if !ok {
 		c.JSON(400, gin.H{"code": failure, "msg": "sftpClient error"})
 		return
 	}
-	files, err := cli.sftpClient.ReadDir(dirPath)
+	files, err := cli.(*Ssh).sftpClient.ReadDir(dirPath)
 	if err != nil {
 		c.JSON(400, gin.H{"code": failure, "msg": "list Folder error"})
 		return
@@ -1217,11 +1227,9 @@ func (f Sftp) GET(c *gin.Context) {
 func (f Sftp) POST(c *gin.Context) {
 	sessionId := c.PostForm("session_id")
 	fullPath := c.PostForm("path")
-	clients.lock.RLock()
-	defer clients.lock.RUnlock()
-	cli, ok := clients.data[sessionId]
+	cli, ok := clients.Load(sessionId)
 	if ok {
-		file, _ := cli.sftpClient.Open(fullPath)
+		file, _ := cli.(*Ssh).sftpClient.Open(fullPath)
 		defer func() {
 			_ = file.Close()
 		}()
@@ -1236,13 +1244,11 @@ func (f Sftp) PUT(c *gin.Context) {
 	//获取上传的文件组
 	files := c.Request.MultipartForm.File["file"]
 
-	clients.lock.RLock()
-	defer clients.lock.RUnlock()
 	for _, file := range files {
-		cli, ok := clients.data[sessionId]
+		cli, ok := clients.Load(sessionId)
 		if ok {
 			srcFile, _ := file.Open()
-			dstFile, _ := cli.sftpClient.Create(path.Join(dstPath, file.Filename))
+			dstFile, _ := cli.(*Ssh).sftpClient.Create(path.Join(dstPath, file.Filename))
 			_, _ = io.Copy(dstFile, srcFile)
 			_ = srcFile.Close()
 			_ = dstFile.Close()
@@ -1265,17 +1271,16 @@ func ConnectGC() {
 		time.Sleep(time.Second)
 		duration, _ := time.ParseDuration("-1m")
 		longAgo := time.Now().Add(duration)
-		for key, item := range clients.data {
-			if item.Timeout.Before(longAgo) {
-				_ = item.sshClient.Close()
-				_ = item.sftpClient.Close()
-				_ = item.sshSession.Close()
-				_ = item.ws.Close()
-				clients.lock.Lock()
-				delete(clients.data, key)
-				clients.lock.Unlock()
+		clients.Range(func(key, item any) bool {
+			if item.(*Ssh).GetTimeout().Before(longAgo) {
+				_ = item.(*Ssh).sshClient.Close()
+				_ = item.(*Ssh).sftpClient.Close()
+				_ = item.(*Ssh).sshSession.Close()
+				_ = item.(*Ssh).ws.Close()
+				clients.Delete(key)
 			}
-		}
+			return true
+		})
 	}
 }
 
@@ -1412,7 +1417,7 @@ SameSite=2
 		_ = file.Sync()
 	}
 
-	db, err = sql.Open("sqlite3", path.Join(WorkDir, projectName+".db"))
+	db, err = sql.Open("sqlite", path.Join(WorkDir, projectName+".db"))
 	if err != nil {
 		logger.Error(fmt.Sprintf("创建数据库文件:%s失败\n", path.Join(WorkDir, projectName+".db")))
 		os.Exit(1)
