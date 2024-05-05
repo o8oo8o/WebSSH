@@ -1,0 +1,1141 @@
+{
+	"info": {
+		"_postman_id": "30581d5d-885b-44e8-862f-ff131a64cfb4",
+		"name": "GoWebSSH",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "连接配置",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/conn_conf",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"conn_conf"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/conn_conf/1",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"conn_conf",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\n    \"name\": \"vv\",\n    \"address\": \"192.168.150.200\",\n    \"user\": \"root\",\n    \"pwd\": \"2\",\n    \"auth_type\": \"pwd\",\n    \"net_type\": \"tcp4\",\n    \"cert_data\": \"\",\n    \"cert_pwd\": \"\",\n    \"port\": 22,\n    \"font_size\": 16,\n    \"background\": \"#000000\",\n    \"foreground\": \"#FFFFFF\",\n    \"cursor_color\": \"#FFFFFF\",\n    \"font_family\": \"Courier\",\n    \"cursor_style\": \"block\",\n    \"shell\": \"bash\",\n    \"pty_type\": \"xterm-256color\",\n    \"init_cmd\": \"pwd\",\n    \"init_banner\": \"huang\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/conn_conf",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"conn_conf"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"name\": \"111\",\n    \"address\": \"192.168.150.200\",\n    \"user\": \"root\",\n    \"pwd\": \"2\",\n    \"auth_type\": \"pwd\",\n    \"net_type\": \"tcp4\",\n    \"cert_data\": \"\",\n    \"cert_pwd\": \"\",\n    \"port\": 22,\n    \"font_size\": 16,\n    \"background\": \"#000000\",\n    \"foreground\": \"#FFFFFF\",\n    \"cursor_color\": \"#FFFFFF\",\n    \"font_family\": \"Courier\",\n    \"cursor_style\": \"block\",\n    \"shell\": \"bash\",\n    \"pty_type\": \"xterm-256color\",\n    \"init_cmd\": \"pwd\",\n    \"init_banner\": \"okokksss\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/conn_conf",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"conn_conf"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Id删除",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/conn_conf/id/4",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"conn_conf",
+								"id",
+								"4"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "用户管理",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"abc\",\n    \"pwd\":\"123\",\n    \"desc_info\":\"ac\",\n    \"is_admin\": \"N\",\n    \"is_enable\": \"Y\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 2,\n    \"name\": \"abc\",\n    \"pwd\": \"123\",\n    \"desc_info\": \"ac\",\n    \"is_admin\": \"Y\",\n    \"is_enable\": \"N\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Id删除",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NTg3NH0.o4pjzmnTwwV7k1MBsyk-mbM3NdroNpF3L6GHEWGEFQ",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user/4",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user",
+								"4"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "登陆",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"aa\",\n    \"pwd\":\"33\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/login",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "更新用户",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjEzMH0.wyBO_5wR6G2zzUkq3_6esLo9Wcmbhh69O3wbhxy3CEc",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 3,\n    \"name\": \"abc\",\n    \"pwd\": \"123\",\n    \"desc_info\": \"ac\",\n    \"is_admin\": \"Y\",\n    \"is_enable\": \"N\",\n    \"expiry_at\": \"2024-04-21 11:48:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "检查用户名是否存在",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"huanga\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/user/check_name_exists",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"user",
+								"check_name_exists"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "修改密码",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pwd\":\"ppp\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/pwd",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"pwd"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "系统信息",
+			"item": [
+				{
+					"name": "是否初始化",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sys/is_init",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sys",
+								"is_init"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "获取运行配置",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sys/config",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sys",
+								"config"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "修改运行配置",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"app_name\": \"BBc\",\n        \"run_mode\": 3,\n        \"db_dsn\": \"my:123@qqyy se aa=bb cc=44\",\n        \"is_init\": true,\n        \"jwt_secret\": \"mimaxx\",\n        \"session_name\": \"mimixx\",\n        \"session_path\": \"/xx/xx\",\n        \"session_http_only\": true,\n        \"session_secure\": false,\n        \"session_domain\": \"websshaa\",\n        \"session_max_age\": 10,\n        \"session_same_site\": 20\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sys/config",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sys",
+								"config"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "数据库连接检查",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"db_type\": \"mysql\",\n    \"db_dsn\": \"root:mima@tcp(192.168.150.200:3306)/dba?charset=utf8mb4&parseTime=True&loc=Local\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sys/db_conn_check",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sys",
+								"db_conn_check"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "系统初始化",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"db_type\": \"mysql\",\n    \"db_dsn\": \"root:mima@tcp(192.168.150.200:3306)/dba?charset=utf8mb4&parseTime=True&loc=Local\",\n    \"jwt_secret\": \"Jwtjwt_secret\",\n    \"session_secret\": \"session_secretkey\",\n    \"username\": \"huang\",\n    \"password\": \"rui\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sys/init",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sys",
+								"init"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "命令收藏",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/cmd_note?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"cmd_note"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/cmd_note/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"cmd_note",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cmd_name\": \"ss\",\n    \"cmd_data\": \"ss\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/cmd_note",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"cmd_note"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "更新",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "        {\n            \"id\":2,\n            \"cmd_name\": \"pwd\",\n            \"cmd_data\": \"pwd && ls\"\n        }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/cmd_note",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"cmd_note"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID删除",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MiwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzA2NjU1NX0.9eTeYhvE9BiVXWYr3Sp_3JNB91vmxuMsuJ8TOokXjAA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "        {\n            \"id\":2,\n            \"cmd_name\": \"pwd\",\n            \"cmd_data\": \"pwd && ls\"\n        }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/cmd_note/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"cmd_note",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "访问控制",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/net_filter?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"net_filter"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/net_filter/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"net_filter",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"dmz\",\n    \"cidr\": \"127.0.0.0/32\",\n    \"net_policy\": \"Y\",\n    \"policy_no\": 15,\n    \"expiry_at\": \"2024-04-20 19:31:35\",\n    \"created_at\": \"2024-04-20 19:31:40\",\n    \"updated_at\": \"2024-04-20 19:31:42\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/net_filter",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"net_filter"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 2,\n    \"name\": \"222\",\n    \"cidr\": \"10.10.3.0/16\",\n    \"net_policy\": \"Y\",\n    \"policy_no\": 18,\n    \"expiry_at\": \"2024-04-20 19:31:35\",\n    \"created_at\": \"2024-04-20 19:31:40\",\n    \"updated_at\": \"2024-04-20 19:31:42\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/net_filter",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"net_filter"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID删除",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "        {\n            \"id\":2,\n            \"name\": \"222\",\n            \"cidr\": \"10.10.3.0/16\",\n            \"net_policy\": \"Y\",\n            \"policy_no\": 18,\n            \"expiry_at\": \"2024-04-20 19:31:35\",\n            \"created_at\": \"2024-04-20 19:31:40\",\n            \"updated_at\": \"2024-04-20 19:31:42\"\n        }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/net_filter/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"net_filter",
+								"2"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "策略配置",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/policy_conf?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"policy_conf"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/policy_conf/1",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"policy_conf",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"net_policy\": \"Y\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/policy_conf",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"policy_conf"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"net_policy\": \"Y\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/policy_conf",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"policy_conf"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID删除",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/policy_conf/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"policy_conf",
+								"2"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "value",
+				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MSwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzY5MDI4M30.Sv5diw744Kk-lry7zaZbK8r61AtOquwdKIY9gXLl6Lo",
+				"type": "string"
+			},
+			{
+				"key": "key",
+				"value": "Authorization",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "host",
+			"value": "127.0.0.1"
+		},
+		{
+			"key": "port",
+			"value": "8080",
+			"disabled": true
+		},
+		{
+			"key": "port",
+			"value": "8899"
+		}
+	]
+}

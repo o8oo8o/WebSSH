@@ -1,8 +1,12 @@
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-import AutoImport from "unplugin-auto-import/vite";
-import Components from "unplugin-vue-components/vite";
-import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -15,7 +19,11 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
   ],
-
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
   // 公共路径默认为 / ,我们指定为当前项目根目录./
   base: "./",
 
@@ -72,4 +80,4 @@ export default defineConfig({
       // chunk 大小警告的限制（以 kbs 为单位）
       chunkSizeWarningLimit: 1500
   }
-});
+})
