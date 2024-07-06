@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"gossh/app/utils"
 	"gossh/toml"
 	"log/slog"
@@ -17,6 +16,7 @@ type AppConfig struct {
 	DbDsn         string        `json:"db_dsn" toml:"db_dsn"`
 	IsInit        bool          `json:"is_init" toml:"is_init"`
 	JwtSecret     string        `json:"jwt_secret" toml:"jwt_secret"`
+	AesSecret     string        `json:"aes_secret" toml:"aes_secret"`
 	JwtExpire     time.Duration `json:"jwt_expire" toml:"jwt_expire"`
 	StatusRefresh time.Duration `json:"status_refresh" toml:"status_refresh"`
 	ClientCheck   time.Duration `json:"client_check" toml:"client_check"`
@@ -33,6 +33,7 @@ var DefaultConfig = AppConfig{
 	DbDsn:         "",
 	IsInit:        false,
 	JwtSecret:     utils.RandString(64),
+	AesSecret:     utils.RandString(32),
 	SessionSecret: utils.RandString(64),
 	JwtExpire:     time.Minute * 120,
 	StatusRefresh: time.Second * 3,
@@ -49,8 +50,10 @@ var projectName = "GoWebSSH"
 
 var confFileName = "GoWebSSH.toml"
 
+var confPath = string(os.PathSeparator) + "." + projectName + string(os.PathSeparator)
+
 // WorkDir 程序默认工作目录,在用户的home目录下 .GoWebSSH 目录
-var WorkDir = path.Join(UserHomeDir, fmt.Sprintf("/.%s/", projectName))
+var WorkDir = path.Join(UserHomeDir, confPath)
 
 var confFileFullPath = path.Join(WorkDir, confFileName)
 
@@ -66,7 +69,7 @@ func init() {
 	flag.StringVar(&dir, "WorkDir", "", "自定义工作目录")
 	flag.Parse()
 	if dir != "" {
-		WorkDir = path.Join(dir, fmt.Sprintf("/.%s/", projectName))
+		WorkDir = path.Join(dir, confPath)
 		confFileFullPath = path.Join(WorkDir, confFileName)
 		DefaultConfig.CertFile = path.Join(WorkDir, "cert.pem")
 		DefaultConfig.KeyFile = path.Join(WorkDir, "key.key")

@@ -1,12 +1,18 @@
 package model
 
+import (
+	"gossh/app/config"
+	"gossh/app/utils"
+	"gossh/gorm"
+)
+
 type SshConf struct {
 	ID          uint     `gorm:"primaryKey,autoIncrement" form:"id" json:"id"`
 	Uid         uint     `gorm:"not null;default:0" form:"uid" json:"uid"`
 	Name        string   `gorm:"not null;size:64" form:"name" binding:"required,min=1,max=63" json:"name"`
 	Address     string   `gorm:"size:128" form:"address" binding:"required,min=1,max=128" json:"address"`
 	User        string   `gorm:"size:128" form:"user" binding:"required,min=1,max=128" json:"user"`
-	Pwd         string   `gorm:"not null;size:128;default:''" form:"pwd" binding:"max=128" json:"pwd"`
+	Pwd         string   `gorm:"not null;size:4096;default:''" form:"pwd" binding:"max=4096" json:"pwd"`
 	AuthType    string   `gorm:"not null;size:32;default:'pwd'" form:"auth_type" binding:"required,min=1,max=32,oneof=pwd cert" json:"auth_type"`
 	NetType     string   `gorm:"not null;size:32;default:'tcp4'" form:"net_type" binding:"required,min=1,max=32,oneof=tcp4 tcp6" json:"net_type"`
 	CertData    string   `gorm:"type:text" form:"cert_data" json:"cert_data"`
@@ -26,26 +32,39 @@ type SshConf struct {
 	UpdatedAt   DateTime `gorm:"updated_at" json:"-"`
 }
 
-func (c SshConf) Create(conf *SshConf) error {
+func (c *SshConf) Create(conf *SshConf) error {
 	return Db.Create(conf).Error
 }
 
-func (c SshConf) FindByID(id uint, uid uint) (SshConf, error) {
+func (c *SshConf) FindByID(id uint, uid uint) (SshConf, error) {
 	var conf SshConf
 	err := Db.First(&conf, "id = ? AND uid = ?", id, uid).Error
 	return conf, err
 }
 
-func (c SshConf) FindAll(offset, limit int, uid uint) ([]SshConf, error) {
+func (c *SshConf) FindAll(offset, limit int, uid uint) ([]SshConf, error) {
 	var list []SshConf
 	err := Db.Where("uid = ?", uid).Offset(offset).Limit(limit).Order("updated_at desc").Find(&list).Error
 	return list, err
 }
 
-func (c SshConf) UpdateById(id, uid uint, conf *SshConf) error {
+func (c *SshConf) UpdateById(id, uid uint, conf *SshConf) error {
+	c.Pwd, _ = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
 	return Db.Model(&c).Where("id = ? AND uid = ?", id, uid).Updates(conf).Error
 }
 
-func (c SshConf) DeleteByID(id, uid uint) error {
+func (c *SshConf) DeleteByID(id, uid uint) error {
 	return Db.Unscoped().Delete(&c, "id = ? AND uid = ?", id, uid).Error
+}
+
+func (c *SshConf) BeforeCreate(_ *gorm.DB) error {
+	var err error
+	c.Pwd, err = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	return err
+}
+
+func (c *SshConf) AfterFind(_ *gorm.DB) error {
+	var err error
+	c.Pwd, err = utils.AesDecrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	return err
 }

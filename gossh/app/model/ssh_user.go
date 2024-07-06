@@ -1,5 +1,11 @@
 package model
 
+import (
+	"gossh/app/config"
+	"gossh/app/utils"
+	"gossh/gorm"
+)
+
 type SshUser struct {
 	ID       uint     `gorm:"primaryKey,autoIncrement" form:"id" json:"id"`
 	Name     string   `gorm:"uniqueIndex;not null;size:64" form:"name" binding:"required,min=1,max=63" json:"name"`
@@ -14,46 +20,60 @@ type SshUser struct {
 	UpdatedAt DateTime `gorm:"updated_at" json:"-"`
 }
 
-func (c SshUser) Create(user *SshUser) error {
+func (c *SshUser) Create(user *SshUser) error {
 	return Db.Create(user).Error
 }
 
-func (c SshUser) FindByNameAndPwd(name, pwd string) (SshUser, error) {
+func (c *SshUser) FindByNameAndPwd(name, pwd string) (SshUser, error) {
 	var user SshUser
-	err := Db.First(&user, "name = ? AND pwd = ?", name, pwd).Error
+	encryptPwd, err := utils.AesEncrypt(pwd, config.DefaultConfig.AesSecret)
+	if err != nil {
+		return SshUser{}, err
+	}
+	err = Db.First(&user, "name = ? AND pwd = ?", name, encryptPwd).Error
 	return user, err
 }
 
-func (c SshUser) FindByName(name string) (SshUser, error) {
+func (c *SshUser) FindByName(name string) (SshUser, error) {
 	var user SshUser
 	err := Db.Find(&user, "name = ?", name).Error
 	return user, err
 }
 
-func (c SshUser) FindByID(id uint) (SshUser, error) {
+func (c *SshUser) FindByID(id uint) (SshUser, error) {
 	var user SshUser
 	err := Db.First(&user, "id = ?", id).Error
 	return user, err
 }
 
-func (c SshUser) FindAll(limit, offset int) ([]SshUser, error) {
+func (c *SshUser) FindAll(limit, offset int) ([]SshUser, error) {
 	var list []SshUser
 	err := Db.Where("is_root = ?", "N").Limit(limit).Offset(offset).Find(&list).Error
 	return list, err
 }
 
-func (c SshUser) UpdateByName(name string, user *SshUser) error {
-	return Db.Model(&c).Where("name = ?", name).Updates(user).Error
-}
-
-func (c SshUser) UpdateById(id uint, user *SshUser) error {
+func (c *SshUser) UpdateById(id uint, user *SshUser) error {
+	c.Pwd, _ = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
 	return Db.Model(&c).Where("id = ? AND is_root = ?", id, "N").Updates(user).Error
 }
 
-func (c SshUser) UpdatePassword(id uint, user *SshUser) error {
+func (c *SshUser) UpdatePassword(id uint, user *SshUser) error {
+	c.Pwd, _ = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
 	return Db.Model(&c).Where("id = ?", id).Updates(user).Error
 }
 
-func (c SshUser) DeleteByID(id uint) error {
+func (c *SshUser) DeleteByID(id uint) error {
 	return Db.Unscoped().Delete(&c, "id = ? AND is_root = ?", id, "N").Error
+}
+
+func (c *SshUser) BeforeCreate(_ *gorm.DB) error {
+	var err error
+	c.Pwd, err = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	return err
+}
+
+func (c *SshUser) AfterFind(_ *gorm.DB) error {
+	var err error
+	c.Pwd, err = utils.AesDecrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	return err
 }
