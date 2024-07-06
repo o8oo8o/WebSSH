@@ -24,8 +24,11 @@ var dir embed.FS
 
 // StaticFile 嵌入普通的静态资源
 type StaticFile struct {
-	embedFS embed.FS // 静态资源
-	path    string   // 设置embed文件到静态资源的相对路径，也就是embed注释里的路径
+	// 静态资源
+	embedFS embed.FS
+
+	// 设置embed文件到静态资源的相对路径，也就是embed注释里的路径
+	path string
 }
 
 // Open 静态资源被访问的核心逻辑
@@ -43,6 +46,7 @@ func (w StaticFile) Open(name string) (fs.File, error) {
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	var engine = gin.Default()
+	engine.Use(middleware.DbCheck())
 	engine.Use(middleware.NetFilter())
 
 	engine.NoRoute(func(c *gin.Context) {
@@ -54,7 +58,10 @@ func main() {
 	engine.GET("/api/sys/is_init", service.GetIsInit)
 	engine.POST("/api/sys/init", service.SysInit)
 
-	var router = engine.Group("", middleware.SysInit(), middleware.JWTAuth())
+	var router = engine.Group("",
+		middleware.SysInit(),
+		middleware.JWTAuth(),
+	)
 
 	{ // SSH 连接配置
 		router.GET("/api/conn_conf", service.ConfFindAll)

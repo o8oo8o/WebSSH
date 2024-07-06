@@ -25,6 +25,11 @@ func init() {
 }
 
 func DbMigrate(dbType, dsn string) error {
+	defer func() {
+		if err := recover(); err != nil {
+			slog.Error("DbMigrate error", "err_msg", err)
+		}
+	}()
 	if dbType == "pgsql" {
 		db, err := gorm.Open(pgsql.Open(dsn), &gorm.Config{})
 		if err != nil {
