@@ -3,14 +3,15 @@ package model
 import "time"
 
 type NetFilter struct {
-	ID        uint     `gorm:"id;autoIncrement;primaryKey" form:"id" json:"id"`
-	Name      string   `gorm:"not null;name" form:"name" json:"name" binding:"required"`
-	Cidr      string   `gorm:"not null;cidr" form:"cidr" json:"cidr" binding:"required,cidr"`
-	NetPolicy string   `gorm:"not null;size:64;default:'Y'" form:"net_policy" binding:"required,min=1,max=64,oneof=Y N" json:"net_policy"`
-	PolicyNo  uint     `gorm:"not null;" form:"policy_no" json:"policy_no" binding:"required,gte=1,lte=65535"`
-	ExpiryAt  DateTime `gorm:"not null;expiry_at"  json:"expiry_at"  form:"expiry_at" binding:"required"`
-	CreatedAt DateTime `gorm:"created_at" json:"-"`
-	UpdatedAt DateTime `gorm:"updated_at" json:"-"`
+	ID        uint     `gorm:"column:id;primaryKey,autoIncrement" form:"id" json:"id"`
+	Name      string   `gorm:"column:name;not null" form:"name" json:"name" binding:"required"`
+	Cidr      string   `gorm:"column:cidr;not null" form:"cidr" json:"cidr" binding:"required,cidr"`
+	NetPolicy string   `gorm:"column:net_policy;not null;size:64;default:'Y'" form:"net_policy" binding:"required,min=1,max=64,oneof=Y N" json:"net_policy"`
+	PolicyNo  uint     `gorm:"column:policy_no;not null;" form:"policy_no" json:"policy_no" binding:"required,gte=1,lte=65535"`
+	ExpiryAt  DateTime `gorm:"column:expiry_at;not null"  json:"expiry_at"  form:"expiry_at" binding:"required"`
+
+	CreatedAt DateTime `gorm:"column:created_at" json:"-"`
+	UpdatedAt DateTime `gorm:"column:updated_at" json:"-"`
 }
 
 func (c NetFilter) Create(filter *NetFilter) error {

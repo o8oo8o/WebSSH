@@ -458,7 +458,8 @@
                 <template #reference>
                   <el-button :type="item.session_id === data.current_host.session_id
           ? 'primary' : 'info'">
-                    <span style="color:white">{{ item.name }}</span>
+                    <span v-if="item.is_close" style="color:red">{{ item.name }}</span>
+                    <span v-else="item.is_close" style="color:white">{{ item.name }}</span>
                   </el-button>
                 </template>
                 <div>

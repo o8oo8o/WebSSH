@@ -1,10 +1,10 @@
 package model
 
 type CmdNote struct {
-	ID      uint   `gorm:"primaryKey,autoIncrement" form:"id" json:"id"`
-	Uid     uint   `gorm:"not null;default:0" form:"uid" json:"uid"`
-	CmdName string `gorm:"type:text" form:"cmd_name" binding:"required" json:"cmd_name"`
-	CmdData string `gorm:"type:text" form:"cmd_data" binding:"required" json:"cmd_data"`
+	ID      uint   `gorm:"column:id;primaryKey,autoIncrement" form:"id" json:"id"`
+	Uid     uint   `gorm:"column:uid;not null;default:0" form:"uid" json:"uid"`
+	CmdName string `gorm:"column:cmd_name;type:text" form:"cmd_name" binding:"required" json:"cmd_name"`
+	CmdData string `gorm:"column:cmd_data;type:text" form:"cmd_data" binding:"required" json:"cmd_data"`
 
 	CreatedAt DateTime `gorm:"created_at" json:"-"`
 	UpdatedAt DateTime `gorm:"updated_at" json:"-"`

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -37,13 +38,17 @@ func TruncateString(s string, length int) string {
 }
 
 func AesEncrypt(orig string, key string) (string, error) {
+	orig = strings.TrimSpace(orig)
 	defer func() {
 		if err := recover(); err != nil {
 			slog.Error("AES加密错误", "err_msg", err)
 		}
 	}()
-	if len(orig) < 1 || len(key) != 32 {
-		return "", errors.New("加密需要的数据长度错误")
+	if len(orig) == 0 {
+		return "", nil
+	}
+	if len(key) != 32 {
+		return "", errors.New("加密需要的key长度错误")
 	}
 	// 转成字节数组
 	origData := []byte(orig)
@@ -72,13 +77,17 @@ func AesEncrypt(orig string, key string) (string, error) {
 }
 
 func AesDecrypt(crypt string, key string) (string, error) {
+	crypt = strings.TrimSpace(crypt)
 	defer func() {
 		if err := recover(); err != nil {
 			slog.Error("AES解密错误", "err_msg", err)
 		}
 	}()
+	if len(crypt) == 0 {
+		return "", nil
+	}
 	if len(crypt) < 1 || len(key) != 32 {
-		return "", errors.New("解密需要的数据长度错误")
+		return "", errors.New("解密需要的key长度错误")
 	}
 	// 转成字节数组
 	cryptByte, _ := base64.StdEncoding.DecodeString(crypt)

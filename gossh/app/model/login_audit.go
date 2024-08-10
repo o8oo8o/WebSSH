@@ -1,17 +1,17 @@
 package model
 
 type LoginAudit struct {
-	ID        uint     `gorm:"primaryKey,autoIncrement" form:"id" json:"id"`
-	Name      string   `gorm:"not null;size:128" form:"name" binding:"required,min=1,max=128" json:"name"`
-	Pwd       string   `gorm:"size:128" form:"pwd" binding:"required,min=1,max=128" json:"pwd"`
-	ClientIp  string   `gorm:"size:128" form:"client_ip" binding:"required,min=1,max=128" json:"client_ip"`
-	UserAgent string   `gorm:"size:512" form:"user_agent" binding:"required,min=0,max=512" json:"user_agent"`
-	ErrMsg    string   `gorm:"size:64" form:"err_msg" binding:"required,min=1,max=64" json:"err_msg"`
-	IsSuccess string   `gorm:"not null;size:64;default:'N'" form:"is_success" binding:"required,min=1,max=64,oneof=Y N" json:"is_success"`
-	OccurAt   DateTime `gorm:"occur_at;not null"  json:"occur_at"  form:"occur_at" binding:"required"`
+	ID        uint     `gorm:"column:id;primaryKey,autoIncrement" form:"id" json:"id"`
+	Name      string   `gorm:"column:name;not null;size:128" form:"name" binding:"required,min=1,max=128" json:"name"`
+	Pwd       string   `gorm:"column:pwd;size:128" form:"pwd" binding:"required,min=1,max=128" json:"pwd"`
+	ClientIp  string   `gorm:"column:client_ip;size:128" form:"client_ip" binding:"required,min=1,max=128" json:"client_ip"`
+	UserAgent string   `gorm:"column:user_agent;size:512" form:"user_agent" binding:"required,min=0,max=512" json:"user_agent"`
+	ErrMsg    string   `gorm:"column:err_msg;size:64" form:"err_msg" binding:"required,min=1,max=64" json:"err_msg"`
+	IsSuccess string   `gorm:"column:is_success;not null;size:64;default:'N'" form:"is_success" binding:"required,min=1,max=64,oneof=Y N" json:"is_success"`
+	OccurAt   DateTime `gorm:"column:occur_at;not null"  json:"occur_at"  form:"occur_at" binding:"required"`
 
-	CreatedAt DateTime `gorm:"created_at" json:"-"`
-	UpdatedAt DateTime `gorm:"updated_at" json:"-"`
+	CreatedAt DateTime `gorm:"column:created_at" json:"-"`
+	UpdatedAt DateTime `gorm:"column:updated_at" json:"-"`
 }
 
 func (c LoginAudit) Create(audit *LoginAudit) error {

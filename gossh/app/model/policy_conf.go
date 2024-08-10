@@ -1,10 +1,11 @@
 package model
 
 type PolicyConf struct {
-	ID        uint     `gorm:"id;autoIncrement;primaryKey" form:"id" json:"id"`
-	NetPolicy string   `gorm:"not null;size:64;default:'Y'" form:"net_policy" binding:"required,min=1,max=64,oneof=Y N" json:"net_policy"`
-	CreatedAt DateTime `gorm:"created_at" json:"-"`
-	UpdatedAt DateTime `gorm:"updated_at" json:"-"`
+	ID        uint   `gorm:"column:id;primaryKey,autoIncrement" form:"id" json:"id"`
+	NetPolicy string `gorm:"column:net_policy;not null;size:64;default:'Y'" form:"net_policy" binding:"required,min=1,max=64,oneof=Y N" json:"net_policy"`
+
+	CreatedAt DateTime `gorm:"column:created_at" json:"-"`
+	UpdatedAt DateTime `gorm:"column:updated_at" json:"-"`
 }
 
 func (c PolicyConf) Create(conf *PolicyConf) error {

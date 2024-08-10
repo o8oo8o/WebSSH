@@ -5,8 +5,8 @@
     </el-header>
     <el-main>
       <el-row>
-        <el-col :span="8"></el-col>
-        <el-col :span="8">
+        <el-col :span="4"></el-col>
+        <el-col :span="16">
           <div>
             <el-divider />
             <el-form>

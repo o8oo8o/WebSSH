@@ -6,6 +6,7 @@ import (
 	"gossh/gorm"
 	"gossh/gorm/driver/mysql"
 	"gossh/gorm/driver/pgsql"
+	"gossh/gorm/logger"
 	_ "gossh/mysql"
 	_ "gossh/pgsql"
 	"log/slog"
@@ -31,7 +32,9 @@ func DbMigrate(dbType, dsn string) error {
 		}
 	}()
 	if dbType == "pgsql" {
-		db, err := gorm.Open(pgsql.Open(dsn), &gorm.Config{})
+		db, err := gorm.Open(pgsql.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Warn),
+		})
 		if err != nil {
 			return err
 		}
@@ -43,7 +46,9 @@ func DbMigrate(dbType, dsn string) error {
 	}
 
 	if dbType == "mysql" {
-		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Warn),
+		})
 		if err != nil {
 			return err
 		}

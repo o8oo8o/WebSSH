@@ -7,17 +7,17 @@ import (
 )
 
 type SshUser struct {
-	ID       uint     `gorm:"primaryKey,autoIncrement" form:"id" json:"id"`
-	Name     string   `gorm:"uniqueIndex;not null;size:64" form:"name" binding:"required,min=1,max=63" json:"name"`
-	Pwd      string   `gorm:"size:64" form:"pwd" binding:"required,min=1,max=64" json:"pwd"`
-	DescInfo string   `gorm:"size:64" form:"desc_info" binding:"required,min=1,max=64" json:"desc_info"`
-	IsAdmin  string   `gorm:"not null;size:64;default:'N'" form:"is_admin" binding:"required,min=1,max=64,oneof=Y N" json:"is_admin"`
-	IsEnable string   `gorm:"not null;size:64;default:'Y'" form:"is_enable" binding:"required,min=1,max=64,oneof=Y N" json:"is_enable"`
-	IsRoot   string   `gorm:"not null;size:64;default:'N'" form:"is_root"  json:"is_root"`
-	ExpiryAt DateTime `gorm:"expiry_at;not null"  json:"expiry_at"  form:"expiry_at" binding:"required"`
+	ID       uint     `gorm:"column:id;primaryKey,autoIncrement" form:"id" json:"id"`
+	Name     string   `gorm:"column:name;uniqueIndex;not null;size:64" form:"name" binding:"required,min=1,max=63" json:"name"`
+	Pwd      string   `gorm:"column:pwd;size:64" form:"pwd" binding:"required,min=1,max=64" json:"pwd"`
+	DescInfo string   `gorm:"column:desc_info;size:64" form:"desc_info" binding:"required,min=1,max=64" json:"desc_info"`
+	IsAdmin  string   `gorm:"column:is_admin;not null;size:64;default:'N'" form:"is_admin" binding:"required,min=1,max=64,oneof=Y N" json:"is_admin"`
+	IsEnable string   `gorm:"column:is_enable;not null;size:64;default:'Y'" form:"is_enable" binding:"required,min=1,max=64,oneof=Y N" json:"is_enable"`
+	IsRoot   string   `gorm:"column:is_root;not null;size:64;default:'N'" form:"is_root"  json:"is_root"`
+	ExpiryAt DateTime `gorm:"column:expiry_at;not null"  json:"expiry_at"  form:"expiry_at" binding:"required"`
 
-	CreatedAt DateTime `gorm:"created_at" json:"-"`
-	UpdatedAt DateTime `gorm:"updated_at" json:"-"`
+	CreatedAt DateTime `gorm:"column:created_at" json:"-"`
+	UpdatedAt DateTime `gorm:"column:updated_at" json:"-"`
 }
 
 func (c *SshUser) Create(user *SshUser) error {
@@ -53,25 +53,32 @@ func (c *SshUser) FindAll(limit, offset int) ([]SshUser, error) {
 }
 
 func (c *SshUser) UpdateById(id uint, user *SshUser) error {
-	c.Pwd, _ = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
-	return Db.Model(&c).Where("id = ? AND is_root = ?", id, "N").Updates(user).Error
+	return Db.Model(&c).Where("id = ? AND is_root = ?", id, "N").Select("*").Omit("id", "is_root").Updates(user).Error
 }
 
 func (c *SshUser) UpdatePassword(id uint, user *SshUser) error {
-	c.Pwd, _ = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
-	return Db.Model(&c).Where("id = ?", id).Updates(user).Error
+	return Db.Model(&c).Where("id = ?", id).Select("*").Omit("id").Updates(user).Error
 }
 
 func (c *SshUser) DeleteByID(id uint) error {
 	return Db.Unscoped().Delete(&c, "id = ? AND is_root = ?", id, "N").Error
 }
 
+// BeforeCreate Hook
 func (c *SshUser) BeforeCreate(_ *gorm.DB) error {
 	var err error
 	c.Pwd, err = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
 	return err
 }
 
+// BeforeUpdate Hook
+func (c *SshUser) BeforeUpdate(_ *gorm.DB) error {
+	var err error
+	c.Pwd, err = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	return err
+}
+
+// AfterFind Hook
 func (c *SshUser) AfterFind(_ *gorm.DB) error {
 	var err error
 	c.Pwd, err = utils.AesDecrypt(c.Pwd, config.DefaultConfig.AesSecret)

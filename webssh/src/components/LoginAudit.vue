@@ -61,7 +61,7 @@
       </el-row>
       <el-row style="margin-top: 20px">
         <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
-          :small="true" :background="true" layout="total, sizes, prev, pager, next, jumper" :total="total"
+          size="small" :background="true" layout="total, sizes, prev, pager, next, jumper" :total="total"
           @size-change="searchLoginAudit" @current-change="searchLoginAudit" />
       </el-row>
     </el-card>

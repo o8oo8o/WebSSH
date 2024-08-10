@@ -11,7 +11,6 @@ import (
 	"gossh/websocket"
 	"io"
 	"log/slog"
-	"net"
 	"strconv"
 	"time"
 )
@@ -84,31 +83,28 @@ func (s *SshConn) connect(clientIp string) error {
 		Auth: []ssh.AuthMethod{
 			ssh.Password(s.Pwd),
 		},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			return nil
-		},
-		Timeout: 30 * time.Second,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         30 * time.Second,
 	}
-
 	// 证书认证方式
 	if s.AuthType == "cert" {
 		privateKeyPassword := []byte(s.CertPwd)
 		privateKeyBytes := []byte(s.CertData)
 		if s.CertPwd != "" {
-			// 使用证书空密码登陆
+			// 使用证书有证书密码登陆
 			signer, err := ssh.ParsePrivateKeyWithPassphrase(privateKeyBytes, privateKeyPassword)
 			if err != nil {
-				slog.Error("ParsePrivateKeyWithPassphrase error:", "err_msg", err.Error())
+				slog.Error("解析带密码私钥Key错误:", "err_msg", err.Error())
 				return err
 			}
 			config.Auth = []ssh.AuthMethod{
 				ssh.PublicKeys(signer),
 			}
 		} else {
-			// 使用证书有证书密码登陆
+			// 使用证书空密码登陆
 			signer, err := ssh.ParsePrivateKey(privateKeyBytes)
 			if err != nil {
-				slog.Error("ParsePrivateKey error:", "err_msg", err.Error())
+				slog.Error("解析私钥Key错误:", "err_msg", err.Error())
 				return err
 			}
 			config.Auth = []ssh.AuthMethod{
