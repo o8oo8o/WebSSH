@@ -1,0 +1,55 @@
+name: Build&Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'tag_name'
+        default: 2.3
+
+      name:
+        description: 'release name'
+        default: 2.3
+        
+      body:
+        description: 'release body'
+        default: 
+        
+      draft:
+        description: 'Is release draft?'
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.ref }}
+          
+      - name: Setup Go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: 1.22.2
+
+      - name: Build
+        run:  |
+          cd gossh
+          make -j all
+        
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          name: ${{ inputs.name }}
+          body: ${{ inputs.body }}
+          draft: ${{ inputs.draft }}
+          files: |
+            gossh/WebSSH-linux-amd64
+            gossh/WebSSH-linux-arm64
+            gossh/WebSSH-macos-amd64
+            gossh/WebSSH-windows-amd64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
