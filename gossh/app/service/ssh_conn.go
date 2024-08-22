@@ -82,6 +82,13 @@ func (s *SshConn) connect(clientIp string) error {
 		User: s.User,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(s.Pwd),
+			ssh.KeyboardInteractive(func(name, instruction string, questions []string, echos []bool) ([]string, error) {
+				answers := make([]string, len(questions))
+				for i := range answers {
+					answers[i] = s.Pwd
+				}
+				return answers, nil
+			}),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         30 * time.Second,
