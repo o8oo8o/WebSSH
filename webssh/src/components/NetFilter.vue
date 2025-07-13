@@ -1,27 +1,8 @@
 <template>
   <el-tab-pane label="访问控制" name="netFilter">
     <!-- ========================================= -->
-    <el-card :body-style="{ height: '36px', 'padding-top': '0px', 'padding-bottom': '0px' }">
-      <el-row style="height: 24px; padding-top: 6px;">
-        <el-col :span="6" style="height: 24px;">
-          <el-form-item label="默认策略">
-            <el-radio-group v-model="data.policy_conf">
-              <el-radio value="N">拒绝</el-radio>
-              <el-radio value="Y">允许</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-col>
-        <el-col :span="2" style="height: 24px;">
-          <el-form-item label="">
-            <el-popconfirm confirmButtonText="确定" cancelButtonText="取消" icon="el-icon-info" iconColor="red"
-              title="确定修改策略?" @confirm="updatePolicyConf">
-              <template #reference>
-                <el-button type="danger">保存策略</el-button>
-              </template>
-            </el-popconfirm>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8"></el-col>
+    <el-card>
+      <el-row>
         <el-col :span="8" style="text-align: right;height: 24px;">
           <el-form-item label="搜索:">
             <el-input v-model="searchNetFilterName" style="max-width: 400px" placeholder="请输入策略名称"
@@ -36,11 +17,28 @@
             </el-input>
           </el-form-item>
         </el-col>
+        <el-col :span="2"></el-col>
+        <!-- <el-col :span="6"></el-col> -->
+        <el-col :span="6" style="height: 24px;">
+          <el-form-item label="默认策略">
+            <el-radio-group v-model="data.policy_conf">
+              <el-radio value="N">拒绝</el-radio>
+              <el-radio value="Y">允许</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-col>
+        <el-col :span="2" style="height: 24px;">
+          <el-form-item label="">
+            <el-popconfirm confirmButtonText="确定" cancelButtonText="取消" icon="el-icon-info" iconColor="red"
+              title="确定修改策略,修改后可能导致不能连接?" @confirm="updatePolicyConf">
+              <template #reference>
+                <el-button type="danger">保存策略</el-button>
+              </template>
+            </el-popconfirm>
+          </el-form-item>
+        </el-col>
       </el-row>
-    </el-card>
-
-    <el-card>
-      <el-row>
+      <el-row style="margin-top: 20px">
         <el-table :data="filterHostTable" style="width: 100%" :show-overflow-tooltip="true">
           <el-table-column fixed sortable prop="name" label="名称" width="200"></el-table-column>
           <el-table-column sortable prop="cidr" label="CIDR"></el-table-column>
@@ -54,19 +52,19 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column sortable prop="policy_no" label="策略编号" width="100"></el-table-column>
+          <el-table-column sortable prop="policy_no" label="策略编号" width="120"></el-table-column>
           <el-table-column sortable prop="expiry_at" label="过期时间" width="180"></el-table-column>
           <el-table-column fixed="right" label="操作">
             <template #header>
-              <el-button size="small" type="primary" @click="addNetFilter">新增</el-button>
-              <el-button size="small" type="primary" @click="getNetFilterList(0, 10000)">刷新</el-button>
+              <el-button type="primary" @click="addNetFilter">新增</el-button>
+              <el-button type="primary" @click="getNetFilterList(0, 10000)">刷新</el-button>
             </template>
             <template #default="scope">
-              <el-button size="small" type="success" @click="editNetFilter(scope.row)">编辑</el-button>
+              <el-button type="success" @click="editNetFilter(scope.row)">编辑</el-button>
               <el-popconfirm confirmButtonText="删除" cancelButtonText="取消" icon="el-icon-info" iconColor="red"
                 title="确定删除吗" @confirm="deleteNetFilterById(scope.row.id)">
                 <template #reference>
-                  <el-button size="small" type="danger">删除</el-button>
+                  <el-button type="danger">删除</el-button>
                 </template>
               </el-popconfirm>
 
@@ -75,10 +73,9 @@
         </el-table>
       </el-row>
     </el-card>
-
     <!-- ========================================= -->
     <el-dialog title="策略配置" v-model="data.net_filter_dialog_visible" width="60%">
-      <el-form label-width="80px" size="small">
+      <el-form label-width="80px">
         <el-form-item label="名称" prop="name">
           <el-input minlength="1" maxlength="60" v-model.trim="netFilter.name" show-word-limit
             placeholder="请输入名称"></el-input>
@@ -112,10 +109,8 @@
 </template>
 
 <script setup lang="ts">
-
 import { computed, onMounted, reactive, ref } from "vue";
-import { type Router, useRoute, useRouter } from "vue-router";
-import { ElMessage, ElPopover, ElNotification, ElMessageBox, dayjs } from "element-plus";
+import { ElMessage, dayjs } from "element-plus";
 import axios from "axios";
 
 
@@ -125,7 +120,7 @@ enum Mode {
 }
 
 /**
- * 用户信息
+ * 网络策略
  */
 
 interface NetFilter {
@@ -181,7 +176,7 @@ const filterHostTable = computed(() =>
 )
 
 /**
- * 获取用户列表
+ * 获取列表
  */
 function getNetFilterList(offset: number = 0, limit: number = 10000) {
   axios.get<ResponseData>(`/api/net_filter?offset=${offset}&limit=${limit}`)

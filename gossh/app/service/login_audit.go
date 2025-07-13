@@ -22,13 +22,6 @@ func AuditFindByID(c *gin.Context) {
 }
 
 func LoginAuditSearch(c *gin.Context) {
-	var user model.SshUser
-	u, err := user.FindByID(c.GetUint("uid"))
-	if err != nil || u.IsAdmin == "N" {
-		c.JSON(200, gin.H{"code": 2, "msg": "Non-admins are not allowed"})
-		return
-	}
-
 	type Param struct {
 		OccurBegin model.DateTime `json:"occur_begin"  form:"occur_begin"`
 		OccurEnd   model.DateTime `json:"occur_end"  form:"occur_end"`

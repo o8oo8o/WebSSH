@@ -1,33 +1,37 @@
 <template>
-  <el-tab-pane label="账号管理" name="accoutManage">
+  <el-tab-pane label="Web账号配置" name="accoutManage">
     <!-- ========================================= -->
-    <el-table :data="data.user_list" style="width: 100%" :show-overflow-tooltip="true">
-      <el-table-column fixed sortable prop="name" label="用户名"></el-table-column>
-      <el-table-column sortable prop="desc_info" label="备注信息" width="200"></el-table-column>
-      <el-table-column sortable prop="is_admin" label="是否管理员"></el-table-column>
-      <el-table-column sortable prop="is_enable" label="是否启用"></el-table-column>
-      <!-- <el-table-column sortable prop="created_at" label="创建时间" width="180"></el-table-column> -->
-      <el-table-column sortable prop="expiry_at" label="过期时间" width="180"></el-table-column>
-      <el-table-column fixed="right" label="操作">
-        <template #header>
-          <el-button size="small" type="primary" @click="addUser">新增</el-button>
-          <el-button size="small" type="primary" @click="getUserList(0, 10000)">刷新</el-button>
-        </template>
-        <template #default="scope">
-          <el-button size="small" type="success" @click="editUser(scope.row)">编辑</el-button>
-          <el-popconfirm confirmButtonText="删除" cancelButtonText="取消" icon="el-icon-info" iconColor="red" title="确定删除吗"
-            @confirm="deleteUserById(scope.row.id)">
-            <template #reference>
-              <el-button size="small" type="danger">删除</el-button>
+    <el-card>
+      <el-row>
+        <el-table :data="data.user_list" style="width: 100%" :show-overflow-tooltip="true">
+          <el-table-column fixed sortable prop="name" label="用户名"></el-table-column>
+          <el-table-column sortable prop="desc_info" label="备注信息" width="200"></el-table-column>
+          <el-table-column sortable prop="is_admin" label="是否管理员"></el-table-column>
+          <el-table-column sortable prop="is_enable" label="是否启用"></el-table-column>
+          <!-- <el-table-column sortable prop="created_at" label="创建时间" width="180"></el-table-column> -->
+          <el-table-column sortable prop="expiry_at" label="过期时间" width="180"></el-table-column>
+          <el-table-column fixed="right" label="操作">
+            <template #header>
+              <el-button type="primary" @click="addUser">新增</el-button>
+              <el-button type="primary" @click="getUserList(0, 10000)">刷新</el-button>
             </template>
-          </el-popconfirm>
+            <template #default="scope">
+              <el-button type="success" @click="editUser(scope.row)">编辑</el-button>
+              <el-popconfirm confirmButtonText="删除" cancelButtonText="取消" icon="el-icon-info" iconColor="red"
+                title="确定删除吗" @confirm="deleteUserById(scope.row.id)">
+                <template #reference>
+                  <el-button type="danger">删除</el-button>
+                </template>
+              </el-popconfirm>
 
-        </template>
-      </el-table-column>
-    </el-table>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-row>
+    </el-card>
     <!-- ========================================= -->
     <el-dialog title="用户信息" v-model="data.user_dialog_visible" width="60%">
-      <el-form label-width="80px" size="small">
+      <el-form label-width="80px">
 
         <el-form-item label="备注名" prop="desc_info">
           <el-input minlength="1" maxlength="60" v-model.trim="user.desc_info" show-word-limit
@@ -73,10 +77,8 @@
 </template>
 
 <script setup lang="ts">
-
 import { onMounted, reactive } from "vue";
-import { type Router, useRoute, useRouter } from "vue-router";
-import { ElMessage, ElPopover, ElNotification, ElMessageBox, dayjs } from "element-plus";
+import { ElMessage, dayjs } from "element-plus";
 import axios from "axios";
 
 
@@ -187,7 +189,7 @@ function getRequestBody(): any {
     is_admin: user.is_admin,
     is_enable: user.is_enable,
     is_root: user.is_root,
-    expiry_at:  dayjs(user.expiry_at).format("YYYY-MM-DD HH:mm:ss"),
+    expiry_at: dayjs(user.expiry_at).format("YYYY-MM-DD HH:mm:ss"),
   }
 }
 

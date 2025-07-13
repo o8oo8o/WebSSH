@@ -73,15 +73,15 @@ func (c *SshConf) BeforeUpdate(_ *gorm.DB) error {
 // AfterFind Hook
 func (c *SshConf) AfterFind(_ *gorm.DB) error {
 	var err error
-	c.Pwd, err = utils.AesDecrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	c.Pwd, err = utils.DecryptString(c.Pwd, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return errors.New("解密密码错误," + err.Error())
 	}
-	c.CertPwd, err = utils.AesDecrypt(c.CertPwd, config.DefaultConfig.AesSecret)
+	c.CertPwd, err = utils.DecryptString(c.CertPwd, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return errors.New("解密证书密码错误,," + err.Error())
 	}
-	c.CertData, err = utils.AesDecrypt(c.CertData, config.DefaultConfig.AesSecret)
+	c.CertData, err = utils.DecryptString(c.CertData, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return errors.New("解密密证书数据错误," + err.Error())
 	}
@@ -90,15 +90,15 @@ func (c *SshConf) AfterFind(_ *gorm.DB) error {
 
 func (c *SshConf) sshConfEncrypt() (*SshConf, error) {
 	var err error
-	c.Pwd, err = utils.AesEncrypt(c.Pwd, config.DefaultConfig.AesSecret)
+	c.Pwd, err = utils.EncryptString(c.Pwd, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return c, errors.New("加密密码错误," + err.Error())
 	}
-	c.CertPwd, err = utils.AesEncrypt(c.CertPwd, config.DefaultConfig.AesSecret)
+	c.CertPwd, err = utils.EncryptString(c.CertPwd, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return c, errors.New("加密证书密码错误," + err.Error())
 	}
-	c.CertData, err = utils.AesEncrypt(c.CertData, config.DefaultConfig.AesSecret)
+	c.CertData, err = utils.EncryptString(c.CertData, config.DefaultConfig.AesSecret)
 	if err != nil {
 		return c, errors.New("加密证书数据错误," + err.Error())
 	}

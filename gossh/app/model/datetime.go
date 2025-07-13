@@ -40,7 +40,7 @@ func (t DateTime) Value() (driver.Value, error) {
 	}
 	return time.Time(t), nil
 }
-func (t *DateTime) Scan(v interface{}) error {
+func (t *DateTime) Scan(v any) error {
 	value, ok := v.(time.Time)
 	if ok {
 		*t = DateTime(value)

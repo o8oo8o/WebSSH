@@ -1,9 +1,18 @@
-import { createRouter, createWebHistory } from "vue-router"
+import { createRouter, createWebHistory, createWebHashHistory } from "vue-router"
 import Home from "../views/Home.vue"
 import Login from "../views/Login.vue"
 
+let basePath = "";
+let history = createWebHashHistory(basePath);
+if (import.meta.env.VITE_ROUTE_MODE === "WebHistory") {
+  if (import.meta.env.VITE_WEB_BASE_DIR) {
+    basePath = `${import.meta.env.VITE_WEB_BASE_DIR}`;
+  }
+  history = createWebHistory(basePath);
+}
+
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: history,
   routes: [
     {
       path: "/",
@@ -23,7 +32,7 @@ const router = createRouter({
     {
       path: "/manage",
       name: "Manage",
-      component: () => import("../views/Manage.vue")
+      component: () => import(/* webpackChunkName: "manage" */ '../views/Manage.vue')
     },
 
     {
@@ -45,4 +54,4 @@ const router = createRouter({
   ]
 })
 
-export default router
+export default router;

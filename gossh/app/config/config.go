@@ -11,6 +11,7 @@ import (
 )
 
 type AppConfig struct {
+	WebBaseDir    string        `json:"web_base_dir"  toml:"web_base_dir"`
 	AppName       string        `json:"app_name"  toml:"app_name"`
 	DbType        string        `json:"db_type" toml:"db_type"`
 	DbDsn         string        `json:"db_dsn" toml:"db_dsn"`
@@ -27,7 +28,23 @@ type AppConfig struct {
 	KeyFile       string        `json:"key_file" toml:"key_file"`
 }
 
+func (c *AppConfig) write() error {
+	data, err := toml.Marshal(c)
+	if err != nil {
+		slog.Error("序列化TOML配置文件错误:", "err_msg", err)
+		return err
+	}
+
+	err = os.WriteFile(confFileFullPath, data, os.FileMode(0777))
+	if err != nil {
+		slog.Error("写入默认配置文件错误:", "err_msg", err.Error())
+		return err
+	}
+	return nil
+}
+
 var DefaultConfig = AppConfig{
+	WebBaseDir:    "",
 	AppName:       "GoWebSHH",
 	DbType:        "mysql",
 	DbDsn:         "",
@@ -57,19 +74,22 @@ var WorkDir = path.Join(UserHomeDir, confPath)
 
 var confFileFullPath = path.Join(WorkDir, confFileName)
 
-func init() {
+func InitConfig() {
 	defer func() {
 		if err := recover(); err != nil {
-			slog.Error("init error", err)
+			slog.Error("init config failed", "err_msg", err)
 			os.Exit(255)
 		}
 	}()
 
-	var dir string
-	flag.StringVar(&dir, "WorkDir", "", "自定义工作目录")
+	var configDir string
+	var webBaseDir string
+	flag.StringVar(&configDir, "ConfigDir", "", "ConfigDir")
+	flag.StringVar(&webBaseDir, "WebBaseDir", "", "WebBaseDir")
 	flag.Parse()
-	if dir != "" {
-		WorkDir = path.Join(dir, confPath)
+	DefaultConfig.WebBaseDir = configDir
+	if configDir != "" {
+		WorkDir = path.Join(configDir, confPath)
 		confFileFullPath = path.Join(WorkDir, confFileName)
 		DefaultConfig.CertFile = path.Join(WorkDir, "cert.pem")
 		DefaultConfig.KeyFile = path.Join(WorkDir, "key.key")
@@ -87,21 +107,13 @@ func init() {
 
 	info, err = os.Stat(WorkDir)
 	if !info.IsDir() {
-		slog.Error("有一个和工作目录同名的文件")
+		slog.Error("有一个和工作目录同名的目录", "dir", WorkDir)
 		return
 	}
 
 	_, err = os.Stat(confFileFullPath)
 	if os.IsNotExist(err) {
-		data, err := toml.Marshal(DefaultConfig)
-		if err != nil {
-			slog.Error("序列化TOML配置文件错误:", "err_msg", err)
-			return
-		}
-
-		err = os.WriteFile(confFileFullPath, data, os.FileMode(0777))
-		if err != nil {
-			slog.Error("写入默认配置文件错误:", "err_msg", err.Error())
+		if err := DefaultConfig.write(); err != nil {
 			return
 		}
 	}
@@ -117,7 +129,15 @@ func init() {
 		slog.Error("TOML解析配置文件错误:", "err_msg", err.Error())
 		return
 	}
-	slog.Info("DefaultConfig:", "data", DefaultConfig)
+
+	// 修正webBaseDir
+	if DefaultConfig.WebBaseDir != webBaseDir {
+		DefaultConfig.WebBaseDir = webBaseDir
+		if err := DefaultConfig.write(); err != nil {
+			return
+		}
+	}
+	slog.Debug("DefaultConfig:", "data", DefaultConfig)
 
 }
 

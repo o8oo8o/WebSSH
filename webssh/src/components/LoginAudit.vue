@@ -1,8 +1,8 @@
 <template>
-  <el-tab-pane label="登录审计" name="loginAudit">
+  <el-tab-pane label="Web登录审计" name="loginAudit">
     <!-- ========================================= -->
-    <el-card :body-style="{ height: '36px', 'padding-top': '0px', 'padding-bottom': '0px' }">
-      <el-row style="height: 24px; padding-top: 6px;">
+    <el-card>
+      <el-row>
         <el-col :span="4" style="height: 24px;">
           <el-form-item label="登录状态">
             <el-radio-group v-model="data.is_success">
@@ -14,8 +14,8 @@
         &nbsp;&nbsp;&nbsp;&nbsp;
         <el-col :span="8" style="height: 24px;">
           <el-form-item label="时间范围">
-            <el-date-picker id="time_range" v-model="time_range" type="datetimerange" range-separator="To"
-              start-placeholder="起始时间" end-placeholder="结束时间" />
+            <el-date-picker v-model="time_range" type="datetimerange" range-separator="To" start-placeholder="起始时间"
+              end-placeholder="结束时间" />
           </el-form-item>
         </el-col>
         &nbsp;&nbsp;&nbsp;&nbsp;
@@ -34,10 +34,7 @@
           <el-button type="primary" @click="searchLoginAudit">搜索</el-button>
         </el-col>
       </el-row>
-    </el-card>
-
-    <el-card>
-      <el-row>
+      <el-row style="margin-top: 20px">
         <el-table :data="data.login_audit_list" style="width: 100%" :show-overflow-tooltip="true">
           <el-table-column sortable prop="id" label="ID" width="150"></el-table-column>
           <el-table-column sortable prop="name" label="用户名"></el-table-column>
@@ -61,19 +58,16 @@
       </el-row>
       <el-row style="margin-top: 20px">
         <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
-          size="small" :background="true" layout="total, sizes, prev, pager, next, jumper" :total="total"
+          :background="true" layout="total, sizes, prev, pager, next, jumper" :total="total"
           @size-change="searchLoginAudit" @current-change="searchLoginAudit" />
       </el-row>
     </el-card>
-
   </el-tab-pane>
 </template>
 
 <script setup lang="ts">
-
 import { onMounted, reactive, ref } from "vue";
-import { type Router, useRoute, useRouter } from "vue-router";
-import { ElMessage, ElPopover, ElNotification, ElMessageBox, dayjs } from "element-plus";
+import { ElMessage, dayjs } from "element-plus";
 import axios from "axios";
 
 const currentPage = ref(1);
@@ -128,7 +122,7 @@ function searchLoginAudit() {
     limit: pageSize.value,
   };
 
-  axios.post<ResponseData>(`/api/login_audit/`, body)
+  axios.post<ResponseData>(`/api/login_audit`, body)
     .then((ret) => {
       if (ret.data.code === 0) {
         data.login_audit_list = ret.data.data;

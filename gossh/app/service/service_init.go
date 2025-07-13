@@ -2,6 +2,7 @@ package service
 
 import (
 	"gossh/app/config"
+	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -18,7 +19,7 @@ func DeleteOnlineClient(sessionId string) {
 	}()
 	cli, ok := OnlineClients.Load(sessionId)
 	if !ok || cli == nil {
-		slog.Info("DeleteOnlineClient Load error")
+		slog.Info("OnlineClient sessionId not exist")
 		return
 	}
 
@@ -34,14 +35,22 @@ func DeleteOnlineClient(sessionId string) {
 	// 关闭 ssh 客户端
 	defer func() {
 		err := conn.sshClient.Close()
+		if err == io.EOF {
+			slog.Info("sshClient.Close EOF")
+			return
+		}
 		if err != nil {
-			slog.Error("DeleteOnlineClient.Close sftpClient error:", "err_msg", err)
+			slog.Error("DeleteOnlineClient.Close sshClient error:", "err_msg", err)
 		}
 	}()
 
 	// 关闭 sftp 客户端
 	defer func() {
 		err := conn.sftpClient.Close()
+		if err == io.EOF {
+			slog.Info("sftpClient.Close EOF")
+			return
+		}
 		if err != nil {
 			slog.Error("DeleteOnlineClient.Close sftpClient error:", "err_msg", err)
 		}
@@ -50,6 +59,10 @@ func DeleteOnlineClient(sessionId string) {
 	// 关闭 ssh 会话
 	defer func() {
 		err := conn.sshSession.Close()
+		if err == io.EOF {
+			slog.Info("sshSession.Close EOF")
+			return
+		}
 		if err != nil {
 			slog.Error("DeleteOnlineClient.Close sshSession error:", "err_msg", err)
 		}
@@ -93,12 +106,15 @@ func initApp() {
 			slog.Error("service init error")
 		}
 	}()
+	if config.DefaultConfig.IsInit {
+		isStartSshd <- true
+	}
 	for {
 		cleanNoActiveSession()
 		time.Sleep(config.DefaultConfig.ClientCheck)
 	}
 }
 
-func init() {
+func InitSessionClean() {
 	go initApp()
 }

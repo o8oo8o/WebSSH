@@ -4,6 +4,9 @@ import (
 	"gossh/app/config"
 	"gossh/app/model"
 	"gossh/gin"
+	"log/slog"
+	"os/exec"
+	"runtime"
 )
 
 func GetRunConf(c *gin.Context) {
@@ -42,6 +45,10 @@ type InitConfig struct {
 	SessionSecret string `json:"session_secret"  binding:"required,min=1,max=128"`
 	Username      string `json:"username"  binding:"required,min=1,max=63"`
 	Password      string `json:"password" binding:"required,min=1,max=63"`
+	SshdHost      string `json:"sshd_host"  binding:"required,min=1,max=127"`
+	SshdPort      uint16 `json:"sshd_port" binding:"required,gte=1,lte=65535"`
+	SshdUser      string `json:"sshd_user"  binding:"required,min=1,max=63"`
+	SshdPwd       string `json:"sshd_pwd" binding:"required,min=1,max=63"`
 }
 
 func SysInit(c *gin.Context) {
@@ -79,7 +86,7 @@ func SysInit(c *gin.Context) {
 	dateTime, _ := model.NewDateTime("2099-12-31 00:00:00")
 
 	// 4.创建初始化用户
-	var user = model.SshUser{
+	var user = model.WebUser{
 		ID:       0,
 		Name:     initConf.Username,
 		Pwd:      initConf.Password,
@@ -96,6 +103,7 @@ func SysInit(c *gin.Context) {
 		return
 	}
 
+	// 5.设置默认网络策略
 	var policyConf = model.PolicyConf{
 		NetPolicy: "N",
 	}
@@ -105,7 +113,61 @@ func SysInit(c *gin.Context) {
 		return
 	}
 
-	// 5.覆盖默认配置
+	privateKey, err := generateKey("webssh")
+	if err != nil {
+		slog.Error("failed to generate private key")
+		c.JSON(200, gin.H{"code": 3, "msg": err.Error(), "data": "初始化生成SSHD私钥错误"})
+		return
+	}
+
+	var shell = "sh"
+	if runtime.GOOS == "windows" {
+		shell = "powershell"
+	} else {
+		sh, err := exec.LookPath("bash")
+		if err == nil {
+			slog.Info("init find shell is bash\n")
+			shell = sh
+		}
+	}
+
+	// 6.初始化sshd服务端配置
+	var sshdConf = model.SshdConf{
+		ID:            1,
+		Name:          "init",
+		Host:          initConf.SshdHost,
+		Port:          initConf.SshdPort,
+		Shell:         shell,
+		KeyFile:       string(privateKey),
+		KeySeed:       "webssh",
+		KeepAlive:     60,
+		LoadEnv:       "Y",
+		AuthType:      "all",
+		ServerVersion: "SSH-2.0-OpenSSH",
+	}
+	err = sshdConf.Create(&sshdConf)
+	if err != nil {
+		c.JSON(200, gin.H{"code": 3, "msg": err.Error(), "data": "初始化SSHD服务端配置错误"})
+		return
+	}
+
+	// 7.初始化sshd服务端账号
+	var sshdUser = model.SshdUser{
+		ID:       1,
+		Name:     initConf.SshdUser,
+		Pwd:      initConf.SshdPwd,
+		DescInfo: "服务器初始化账号",
+		IsEnable: "Y",
+		WorkDir:  "",
+		ExpiryAt: dateTime,
+	}
+	err = sshdUser.Create(&sshdUser)
+	if err != nil {
+		c.JSON(200, gin.H{"code": 3, "msg": err.Error(), "data": "初始化SSHD服务端账号错误"})
+		return
+	}
+
+	// 8.覆盖默认配置
 	var defConf = config.DefaultConfig
 	defConf.IsInit = true
 	defConf.DbType = initConf.DbType
@@ -117,5 +179,37 @@ func SysInit(c *gin.Context) {
 		c.JSON(200, gin.H{"code": 2, "msg": err.Error(), "data": "写入配置错误"})
 		return
 	}
+
+	// 9.创建默认连接
+	var sshConf = model.SshConf{
+		Uid:         1,
+		Name:        "self_sshd",
+		Address:     "127.0.0.1",
+		User:        initConf.SshdUser,
+		Pwd:         initConf.SshdPwd,
+		AuthType:    "pwd",
+		NetType:     "tcp4",
+		CertData:    "",
+		CertPwd:     "",
+		Port:        initConf.SshdPort,
+		FontSize:    16,
+		Background:  "#000000",
+		Foreground:  "#FFFFFF",
+		CursorColor: "#FFFFFF",
+		FontFamily:  "Courier",
+		CursorStyle: "block",
+		Shell:       "sh",
+		PtyType:     "xterm-256color",
+		InitCmd:     "",
+		InitBanner:  "# https://github.com/o8oo8o/WebSSH",
+	}
+
+	err = sshConf.Create(&sshConf)
+	if err != nil {
+		c.JSON(200, gin.H{"code": 3, "msg": err.Error(), "data": "初始化创建默认连接错误"})
+		return
+	}
+
+	isStartSshd <- true
 	c.JSON(200, gin.H{"code": 0, "msg": "系统初始化完成"})
 }

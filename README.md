@@ -1,8 +1,12 @@
 ## GoWebSSH
 <br/>
 
-### 介绍：
-* Golang 1.22 + (Vue3.4 + Vite5)  实现一个Web版单文件的SSH管理工具
+### 项目介绍：
+* **Web版ssh客户端 + (sshd,sftp)服务端实现**
+<br/>
+
+### 概要：
+* Golang 1.23 + (Vue3.5 + Vite6)  实现一个Web版单文件的(SSH+SSHD)
 * 借助于Golang embed,打包以后只有一个文件,简单高效
 * 使用及编译过程,超级简单,绝对保姆级
 * 上一版主要本地运行,但是通过部分用户反馈,此项目定位改为服务器运行,所以此版本加入了很多企业场景中的功能
@@ -38,7 +42,17 @@
 
 <br/>
 
-### 主要功能：
+### 运行环境依赖：
+* 需要MySQL8+及PostgreSQL12.2+或者直接使用内置SQLite数据库
+
+### SSHD服务器功能：
+* 可以配置只监听本地端口
+* 支持Web配置sshd服务器账号密码及公钥
+* 支持密码认证,公钥认证,增强登录过程的安全性
+* 通过SFTP或SCP用户可以安全地在本地和远程服务器之间传输文件
+<br/>
+
+### Web客户端主要功能：
 * 支持同时连接多个主机,支持重连、清屏功能
 * 支持IPv4、IPv6
 * 支持SSH证书登陆及证书密码
@@ -54,13 +68,13 @@
 * 支持后台管理,强制断开连接
 * 支持登陆日志审计,方便监控违规操作
 * 支持访问控制,在公网场景中有效拦截非法访问
-* 支持MySQL8+及PostgreSQL12.2+数据库
 <br/>
 
 ### 为什么这么简单:
 * 为了方便您使用,把golang编译的依赖已经整理好了,clone就一起下载了
 * 前端已经编译完成,并把编译完成的静态资源拷贝到gossh/webroot目录中
 * 可执行文件内嵌静态资源,方便你随性所欲的移动可执行文件
+* 因内置sshd服务器,在受限的网络环境依然能通过web访问
 <br/>
 
 ### 配置文件：
@@ -73,22 +87,33 @@
 ### 注意: 
 * 当程序检测到cert.pem 和 key.key 文件,会使用https协议,否则使用http协议
 * 用户只需把证书文件和私钥文件放到 .GoWebSSH 目录就可以了
+```shell
+openssl genpkey -algorithm RSA -out key.key -pkeyopt rsa_keygen_bits:2048
+
+openssl req -new -x509 -key key.key -out cert.pem -days 365 -subj "/C=CN/ST=bj/L=bj/O=gowebssh/OU=gowebssh/CN=gowebssh.com"
+```
 <br/>
 
 ### Systemd 方式启动: 
 ```shell
-cat > /etc/systemd/system/gowebapp.service << "END"
+cat > /etc/systemd/system/gowebssh.service << "END"
 ##################################
 [Unit]
-Description=GoWebApp
+Description=GoWebSSH Daemon
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
+Environment=TERM=xterm
+Environment=XDG_SESSION_TYPE=tty
+Environment=HOME=/root
+PrivateTmp=true
+LimitNOFILE=65535
 
-## 注:根据可执行文件路径修改
-ExecStart=/usr/local/GoWebSSH
+# 执行程序路径
+ExecStart=/usr/local/gossh
 
 # auto restart
 StartLimitIntervalSec=0
@@ -102,20 +127,20 @@ END
 
 systemctl daemon-reload
 
-systemctl start gowebapp.service
+systemctl start gowebssh.service
 
-systemctl enable gowebapp.service
+systemctl enable gowebssh.service
 
 ```
 <br/>
 
 ---
 ### 演示截图：
-![a](https://gitee.com/o8oo8o/WebSSH/raw/main/img/a.png)
-![b](https://gitee.com/o8oo8o/WebSSH/raw/main/img/b.png)
-![c](https://gitee.com/o8oo8o/WebSSH/raw/main/img/c.png)
-![d](https://gitee.com/o8oo8o/WebSSH/raw/main/img/d.png)
-![e](https://gitee.com/o8oo8o/WebSSH/raw/main/img/e.png)
-![f](https://gitee.com/o8oo8o/WebSSH/raw/main/img/f.png)
-![g](https://gitee.com/o8oo8o/WebSSH/raw/main/img/g.png)
+![a](https://gitee.com/o8oo8o/WebSSH/raw/main/img/a.jpg)
+![b](https://gitee.com/o8oo8o/WebSSH/raw/main/img/b.jpg)
+![c](https://gitee.com/o8oo8o/WebSSH/raw/main/img/c.jpg)
+![d](https://gitee.com/o8oo8o/WebSSH/raw/main/img/d.jpg)
+![e](https://gitee.com/o8oo8o/WebSSH/raw/main/img/e.jpg)
+![f](https://gitee.com/o8oo8o/WebSSH/raw/main/img/f.jpg)
+
 

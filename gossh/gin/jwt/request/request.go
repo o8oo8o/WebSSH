@@ -3,7 +3,7 @@ package request
 import (
 	"net/http"
 
-	"github.com/golang-jwt/jwt/v5"
+	"gossh/gin/jwt"
 )
 
 // ParseFromRequest extracts and parses a JWT token from an HTTP request.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gossh/app/config"
 	"gossh/app/middleware"
+	"gossh/app/model"
 	"gossh/app/service"
 	"gossh/gin"
 	"io/fs"
@@ -43,17 +44,27 @@ func (w StaticFile) Open(name string) (fs.File, error) {
 	return file, err
 }
 
+func init() {
+	config.InitConfig()
+	model.InitDatabase()
+	service.InitSessionClean()
+	service.InitSshServer()
+	fmt.Printf("WebBaseDir:[%s]\n", config.DefaultConfig.WebBaseDir)
+}
+
 func main() {
+
 	gin.SetMode(gin.ReleaseMode)
 	var engine = gin.Default()
 	engine.Use(middleware.DbCheck(), middleware.NetFilter())
+	engine.GET("/web_base_dir", func(c *gin.Context) { c.JSON(200, gin.H{"code": 0, "web_base_dir": config.DefaultConfig.WebBaseDir}) })
 
 	engine.NoRoute(func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/app")
+		c.Redirect(http.StatusMovedPermanently, config.DefaultConfig.WebBaseDir+"/app")
 	})
 
 	// 不需要认证的路由
-	var open = engine.Group("")
+	var open = engine.Group(config.DefaultConfig.WebBaseDir)
 	open.StaticFS("/app", http.FS(StaticFile{embedFS: dir, path: "webroot"}))
 	open.POST("/api/login", service.UserLogin)
 	open.POST("/api/sys/db_conn_check", service.DbConnCheck)
@@ -61,7 +72,11 @@ func main() {
 	open.POST("/api/sys/init", service.SysInit)
 
 	// 需要认证的路由
-	var auth = engine.Group("", middleware.SysInit(), middleware.JWTAuth())
+	var auth = engine.Group(config.DefaultConfig.WebBaseDir,
+		middleware.SysInit(),
+		middleware.JWTAuth(),
+		middleware.PremCheck(engine),
+	)
 
 	{ // SSH 连接配置
 		auth.GET("/api/conn_conf", service.ConfFindAll)
@@ -95,7 +110,7 @@ func main() {
 		auth.DELETE("/api/net_filter/:id", service.NetFilterDeleteById)
 	}
 
-	{ // 用户管理
+	{ // Web用户管理
 		auth.GET("/api/user", service.UserFindAll)
 		auth.GET("/api/user/:id", service.UserFindByID)
 		auth.POST("/api/user", service.UserCreate)
@@ -103,6 +118,25 @@ func main() {
 		auth.DELETE("/api/user/:id", service.UserDeleteById)
 		auth.PATCH("/api/user/check_name_exists", service.CheckUserNameExists)
 		auth.PATCH("/api/user/pwd", service.ModifyPasswd)
+	}
+
+	{ // SSHD用户管理
+		auth.GET("/api/sshd_user", service.SshdUserFindAll)
+		auth.GET("/api/sshd_user/:id", service.SshdUserFindByID)
+		auth.POST("/api/sshd_user", service.SshdUserCreate)
+		auth.PUT("/api/sshd_user", service.SshdUserUpdateById)
+		auth.DELETE("/api/sshd_user/:id", service.SshdUserDeleteById)
+		auth.PATCH("/api/sshd_user/check_name_exists", service.CheckSshdUserNameExists)
+	}
+
+	{ // SSHD证书管理
+		auth.GET("/api/sshd_cert", service.SshdCertFindAll)
+		auth.GET("/api/sshd_cert_text", service.GetSshdCertAuthorizedKeys)
+		auth.GET("/api/sshd_cert/:id", service.SshdCertFindByID)
+		auth.POST("/api/sshd_cert", service.SshdCertCreate)
+		auth.PUT("/api/sshd_cert", service.SshdCertUpdateById)
+		auth.DELETE("/api/sshd_cert/:id", service.SshdCertDeleteById)
+		auth.PATCH("/api/sshd_cert/check_name_exists", service.CheckSshdCertNameExists)
 	}
 
 	{ // 审计日志
@@ -135,7 +169,7 @@ func main() {
 
 	// 如果证书和私钥文件存在,就使用https协议,否则使用http协议
 	if certErr == nil && keyErr == nil {
-		slog.Debug("https_server_start")
+		slog.Info("https_server_start", "address", address)
 		err := engine.RunTLS(address, config.DefaultConfig.CertFile, config.DefaultConfig.KeyFile)
 		if err != nil {
 			slog.Error("RunServeTLSError:", "msg", err.Error())
@@ -143,7 +177,7 @@ func main() {
 			return
 		}
 	} else {
-		slog.Debug("http_server_start")
+		slog.Info("http_server_start", "address", address)
 		err := engine.Run(address)
 		if err != nil {
 			slog.Error("RunServeError:", "msg", err.Error())

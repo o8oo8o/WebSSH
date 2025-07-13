@@ -32,3 +32,14 @@ npm run dev
 npm run build
 ```
 
+
+```sh
+# 设置
+npm config set registry https://registry.npmmirror.com
+
+# 查询
+npm config get registry
+
+# 恢复默认
+npm config set registry https://registry.npmjs.org
+```

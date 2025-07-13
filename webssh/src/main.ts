@@ -16,7 +16,8 @@ const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
 
 app.use(pinia);
-app.use(ElementPlus, { size: "small", zIndex: 2000 });
+app.use(ElementPlus, { zIndex: 2000 });
+// app.use(ElementPlus, { size: "small", zIndex: 2000 });
 app.use(router);
 
 let globalStore = useGlobalStore();
@@ -48,6 +49,17 @@ router.beforeEach((to, from) => {
 
 axios.interceptors.request.use(
     (req) => {
+        let basePath = window.location.pathname.replace("/app/", "");
+
+        if (import.meta.env.VITE_ROUTE_MODE === "WebHistory") {
+            if (import.meta.env.VITE_WEB_BASE_DIR) {
+                basePath = `${import.meta.env.VITE_WEB_BASE_DIR}`;
+            } else {
+                basePath = "";
+            }
+        }
+
+        req.url = `${basePath}${req.url}`;
         // 在发送请求之前加token
         req.headers.Time = String(new Date().getTime());
         req.headers.Authorization = localStorage.getItem("token");

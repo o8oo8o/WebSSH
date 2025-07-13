@@ -2,6 +2,7 @@ package service
 
 import (
 	"gossh/app/config"
+	"gossh/app/model"
 	"gossh/gin"
 	"gossh/gorm"
 	"gossh/gorm/driver/mysql"
@@ -50,6 +51,17 @@ func DbConnTestCheck(dbConf DbConnConf) error {
 
 	if dbConf.DbType == "mysql" {
 		Db, err := gorm.Open(mysql.Open(dbConf.DbDsn), &gorm.Config{})
+		if err != nil {
+			return err
+		}
+		err = Db.Exec("select 1=1;").Error
+		if err != nil {
+			return err
+		}
+	}
+
+	if dbConf.DbType == "sqlite" {
+		Db, err := model.GetSqliteDb(dbConf.DbDsn)
 		if err != nil {
 			return err
 		}

@@ -1,5 +1,5 @@
 # 指定创建的基础镜像
-FROM alpine:3.19.1
+FROM alpine:3.21.0
   
 # 替换阿里云的并更新源、安装openssh 并修改配置文件和生成key 并且同步时间
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \    

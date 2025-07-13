@@ -1,30 +1,30 @@
 <template>
   <el-tab-pane label="连接状态" name="connectInfo">
-    <el-table :data="data.host_list" style="width: 100%" :show-overflow-tooltip="true">
-      <el-table-column fixed prop="name" label="名称"></el-table-column>
-      <el-table-column fixed prop="address" label="服务器地址" width="150"></el-table-column>
-      <el-table-column prop="port" label="端口" width="60"></el-table-column>
-      <el-table-column prop="user" label="用户名"></el-table-column>
-      <el-table-column prop="client_ip" label="客户端IP"></el-table-column>
-      <el-table-column prop="session_id" label="会话ID" width="180"></el-table-column>
-      <el-table-column prop="last_active_time" label="最后活跃时间" width="150"></el-table-column>
-      <el-table-column prop="start_time" label="连接创建时间" width="150"></el-table-column>
-      <el-table-column fixed="right" label="操作">
-        <template #default="scope">
-          <el-button size="small" type="danger" @click="disconnect(scope.$index, scope.row)">断开</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-card>
+      <el-row>
+        <el-table :data="data.host_list" style="width: 100%" :show-overflow-tooltip="true">
+          <el-table-column fixed prop="name" label="名称"></el-table-column>
+          <el-table-column fixed prop="address" label="服务器地址" width="150"></el-table-column>
+          <el-table-column prop="port" label="端口" width="60"></el-table-column>
+          <el-table-column prop="user" label="用户名"></el-table-column>
+          <el-table-column prop="client_ip" label="客户端IP"></el-table-column>
+          <el-table-column prop="session_id" label="会话ID" width="180"></el-table-column>
+          <el-table-column prop="last_active_time" label="最后活跃时间" width="165"></el-table-column>
+          <el-table-column prop="start_time" label="连接创建时间" width="165"></el-table-column>
+          <el-table-column fixed="right" label="操作">
+            <template #default="scope">
+              <el-button type="danger" @click="disconnect(scope.$index, scope.row)">断开</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-row>
+    </el-card>
   </el-tab-pane>
 </template>
 
 <script setup lang="ts">
-
 import { onMounted, reactive } from "vue";
-import { type Router, useRoute, useRouter } from "vue-router";
-import { ElMessage, ElPopover, ElNotification, ElMessageBox } from "element-plus";
 import axios from "axios";
-
 
 /**
  * 主机信息
@@ -85,7 +85,18 @@ function disconnect(index: number, row: HostInfo) {
  */
 function getOnlineClient() {
   if (data.is_admin) {
-    var source = new EventSource(`/api/conn_manage/online_client/?Authorization=${localStorage.getItem("token")}`);
+    let tailPart = `/api/conn_manage/online_client/?Authorization=${localStorage.getItem("token")}`;
+
+    let basePath = window.location.pathname.replace("/app/", "");
+    if (import.meta.env.VITE_ROUTE_MODE === "WebHistory") {
+      if (import.meta.env.VITE_WEB_BASE_DIR) {
+        basePath = `${import.meta.env.VITE_WEB_BASE_DIR}`;
+      } else {
+        basePath = "";
+      }
+    }
+    let sseUrl = `${basePath}${tailPart}`;
+    let source = new EventSource(sseUrl);
     source.onmessage = function (event) {
       let onlineInfo = JSON.parse(event.data) as OnlineInfo;
       if (onlineInfo.code === 0) {
@@ -97,7 +108,7 @@ function getOnlineClient() {
 }
 
 
- onMounted(() => {
+onMounted(() => {
   getOnlineClient();
 })
 </script>

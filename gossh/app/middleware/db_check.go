@@ -13,7 +13,7 @@ func DbCheck() gin.HandlerFunc {
 			return
 		}
 		if model.Db != nil {
-			tx := model.Db.Exec("select now()")
+			tx := model.Db.Exec("select 1=1")
 			if tx.Error == nil {
 				c.Next()
 			} else {

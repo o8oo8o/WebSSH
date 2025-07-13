@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "30581d5d-885b-44e8-862f-ff131a64cfb4",
+		"_postman_id": "2be3976b-7d76-4a9b-b8b0-4bd386ca2826",
 		"name": "GoWebSSH",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -14,13 +14,15 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://{{host}}:{{port}}/api/conn_conf",
+							"raw": "http://{{host}}:{{port}}/gapp/v1/api/conn_conf",
 							"protocol": "http",
 							"host": [
 								"{{host}}"
 							],
 							"port": "{{port}}",
 							"path": [
+								"gapp",
+								"v1",
 								"api",
 								"conn_conf"
 							]
@@ -85,7 +87,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"id\": 1,\n    \"name\": \"111\",\n    \"address\": \"192.168.150.200\",\n    \"user\": \"root\",\n    \"pwd\": \"2\",\n    \"auth_type\": \"pwd\",\n    \"net_type\": \"tcp4\",\n    \"cert_data\": \"\",\n    \"cert_pwd\": \"\",\n    \"port\": 22,\n    \"font_size\": 16,\n    \"background\": \"#000000\",\n    \"foreground\": \"#FFFFFF\",\n    \"cursor_color\": \"#FFFFFF\",\n    \"font_family\": \"Courier\",\n    \"cursor_style\": \"block\",\n    \"shell\": \"bash\",\n    \"pty_type\": \"xterm-256color\",\n    \"init_cmd\": \"pwd\",\n    \"init_banner\": \"okokksss\"\n}",
+							"raw": "{\n    \"id\": 3,\n    \"name\": \"111\",\n    \"address\": \"192.168.150.200\",\n    \"user\": \"root\",\n    \"pwd\": \"2\",\n    \"auth_type\": \"pwd\",\n    \"net_type\": \"tcp4\",\n    \"cert_data\": \"\",\n    \"cert_pwd\": \"\",\n    \"port\": 22,\n    \"font_size\": 16,\n    \"background\": \"#000000\",\n    \"foreground\": \"#FFFFFF\",\n    \"cursor_color\": \"#FFFFFF\",\n    \"font_family\": \"Courier\",\n    \"cursor_style\": \"block\",\n    \"shell\": \"bash\",\n    \"pty_type\": \"xterm-256color\",\n    \"init_cmd\": \"pwd\",\n    \"init_banner\": \"okokksss\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -113,7 +115,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "http://{{host}}:{{port}}/api/conn_conf/id/4",
+							"raw": "http://{{host}}:{{port}}/api/conn_conf/3",
 							"protocol": "http",
 							"host": [
 								"{{host}}"
@@ -122,8 +124,7 @@
 							"path": [
 								"api",
 								"conn_conf",
-								"id",
-								"4"
+								"3"
 							]
 						}
 					},
@@ -204,7 +205,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\":\"abc\",\n    \"pwd\":\"123\",\n    \"desc_info\":\"ac\",\n    \"is_admin\": \"N\",\n    \"is_enable\": \"Y\"\n}",
+							"raw": "{\n    \"name\":\"abc\",\n    \"pwd\":\"123\",\n    \"desc_info\":\"ac\",\n    \"is_admin\": \"N\",\n    \"is_enable\": \"Y\",\n    \"expiry_at\":\"2049-12-31 00:00:00\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -295,7 +296,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\":\"aa\",\n    \"pwd\":\"33\"\n}",
+							"raw": "{\n    \"name\":\"huang\",\n    \"pwd\":\"rui\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -303,13 +304,15 @@
 							}
 						},
 						"url": {
-							"raw": "http://{{host}}:{{port}}/api/login",
+							"raw": "http://{{host}}:{{port}}/gapp/v1/api/login",
 							"protocol": "http",
 							"host": [
 								"{{host}}"
 							],
 							"port": "{{port}}",
 							"path": [
+								"gapp",
+								"v1",
 								"api",
 								"login"
 							]
@@ -391,7 +394,7 @@
 				{
 					"name": "修改密码",
 					"request": {
-						"method": "PUT",
+						"method": "PATCH",
 						"header": [
 							{
 								"key": "Authorization",
@@ -409,7 +412,7 @@
 							}
 						},
 						"url": {
-							"raw": "http://{{host}}:{{port}}/api/pwd",
+							"raw": "http://{{host}}:{{port}}/api/user/pwd",
 							"protocol": "http",
 							"host": [
 								"{{host}}"
@@ -417,6 +420,7 @@
 							"port": "{{port}}",
 							"path": [
 								"api",
+								"user",
 								"pwd"
 							]
 						}
@@ -537,7 +541,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"db_type\": \"mysql\",\n    \"db_dsn\": \"root:mima@tcp(192.168.150.200:3306)/dba?charset=utf8mb4&parseTime=True&loc=Local\",\n    \"jwt_secret\": \"Jwtjwt_secret\",\n    \"session_secret\": \"session_secretkey\",\n    \"username\": \"huang\",\n    \"password\": \"rui\"\n}",
+							"raw": "{\n    \"db_type\": \"pgsql\",\n    \"db_dsn\": \"host=192.168.150.200 port=5432 user=postgres dbname=dba sslmode=disable password=mima\",\n    \"jwt_secret\": \"rgcR6ifl3kdH3FWZCx2XFeXqqBrGumxLgxudtaQxL5ni8LdVumuevdxHJi9FLNHy\",\n    \"session_secret\": \"ugLa8BlyUoWs60iCpZnAzvYz6EM5m1qnjDFGjDHTl4nspQtSJOY24fKso1WkbvOF\",\n    \"username\": \"huang\",\n    \"password\": \"rui\",\n    \"sshd_host\": \"0.0.0.0\",\n    \"sshd_port\": 22622,\n    \"sshd_user\": \"admin\",\n    \"sshd_pwd\": \"mima\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1086,6 +1090,368 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "SSHD账号配置",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_user?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_user"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_user/1",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_user",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"admin\",\n    \"pwd\": \"mima\",\n    \"desc_info\": \"SSHD服务器初始化账号\",\n    \"is_enable\": \"Y\",\n    \"work_dir\": \"\",\n    \"expiry_at\": \"2099-12-31 00:00:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_user",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_user"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 2,\n    \"name\": \"dd\",\n    \"pwd\": \"dd\",\n    \"desc_info\": \"dddd\",\n    \"is_enable\": \"N\",\n    \"work_dir\": \"SS\",\n    \"expiry_at\": \"2029-12-31 00:00:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_user",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_user"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID删除",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_user/2",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_user",
+								"2"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "SSHD证书配置",
+			"item": [
+				{
+					"name": "查询列表",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert?offset=0&limit=100",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID查询",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert/3",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert",
+								"3"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "新增",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"inits\",\n    \"desc_info\":\"da\",\n    \"pub_key\": \"ssh-rsa AAAAB3Nza..= root@aaa.com\",\n    \"is_enable\": \"Y\",\n    \"expiry_at\": \"2024-12-24 04:57:51\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID更新",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 7,\n    \"name\": \"777a\",\n    \"desc_info\":\"da\",\n    \"pub_key\": \"ssh-rsa AAAA123 root@aaa.com\",\n    \"is_enable\": \"N\",\n    \"expiry_at\": \"2024-10-24 04:57:51\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ID删除",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert/5",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert",
+								"5"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "查询证书TXT",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://{{host}}:{{port}}/api/sshd_cert_text",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"api",
+								"sshd_cert_text"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"auth": {
@@ -1093,7 +1459,7 @@
 		"apikey": [
 			{
 				"key": "value",
-				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6MSwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTcxMzY5MDI4M30.Sv5diw744Kk-lry7zaZbK8r61AtOquwdKIY9gXLl6Lo",
+				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJZCI6NSwiaXNzIjoiZ29fd2ViX3NzaCIsImV4cCI6MTczMzU2NDc3OX0.egktgJmb7LqwiKFoozdVF2N5yvnRE00CJhv7KqHPjHQ",
 				"type": "string"
 			},
 			{

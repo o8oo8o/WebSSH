@@ -16,26 +16,44 @@ let globalStore = useGlobalStore();
 // 检查Wake Lock功能的支持情况
 const isWakeLockSupported = "wakeLock" in navigator;
 
-let wakeLock: WakeLockSentinel;
+let wakeLock: WakeLockSentinel | null = null;
 
 /**
  * 屏幕保持唤醒状态
  */
 const requestScreenWakeLock = async () => {
+  if (!isWakeLockSupported) return;
+  
   try {
     wakeLock = await navigator.wakeLock.request("screen");
     // console.log("屏幕保持唤醒状态成功");
   } catch (error) {
-    let err = error as Error;
-    console.error(`错误：${err.name}, 消息：${err.message}`);
+    // 忽略 NotAllowedError，这是正常的行为
+    if ((error as Error).name !== 'NotAllowedError') {
+      console.error(`WakeLock 错误：${(error as Error).message}`);
+    }
+  }
+};
+
+/**
+ * 处理页面可见性变化
+ */
+const handleVisibilityChange = async () => {
+  if (document.visibilityState === 'visible') {
+    // 页面变为可见时重新请求 wake lock
+    await requestScreenWakeLock();
   }
 };
 
 onMounted(() => {
-  if (isWakeLockSupported) {
-    requestScreenWakeLock().then((ret)=>{});
+  // 添加页面可见性变化监听
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  // 初始请求 wake lock
+  if (document.visibilityState === 'visible') {
+    requestScreenWakeLock();
   }
-})
+});
 
 /**
  * 检查系统是否已经初始化及运行模式
@@ -59,13 +77,17 @@ onBeforeMount(async () => {
 });
 
 onBeforeUnmount(() => {
-  // if (isWakeLockSupported && wakeLock) {
-  //   // 屏幕唤醒锁已释放
-  //   wakeLock.release().then(() => {
-  //     wakeLock = null as unknown as WakeLockSentinel;
-  //     // console.log("屏幕唤醒锁已释放");
-  //   });
-  // }
+  // 移除页面可见性变化监听
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  
+  // 释放 wake lock
+  if (wakeLock) {
+    wakeLock.release().then(() => {
+      wakeLock = null;
+    }).catch((error) => {
+      console.error(`释放 WakeLock 错误：${error}`);
+    });
+  }
 });
 
 </script>
@@ -76,11 +98,4 @@ onBeforeUnmount(() => {
   background-color: #2b75d6;
 }
 
-/* tab 标签和终端之间的空白处理 */
-#app>section>div>div>div.el-tabs__header.is-top {
-  margin-bottom: 0px;
-  margin-top: 0px;
-  height: 30px;
-  border-bottom: none;
-}
 </style>

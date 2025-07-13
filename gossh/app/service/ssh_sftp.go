@@ -53,9 +53,9 @@ func SftpList(c *gin.Context) {
 
 	fileCount := 0
 	dirCount := 0
-	var fileList []interface{}
+	var fileList []any
 	for _, file := range files {
-		fileInfo := map[string]interface{}{}
+		fileInfo := map[string]any{}
 		fileInfo["path"] = path.Join(dirPath, file.Name())
 		fileInfo["name"] = file.Name()
 		fileInfo["mode"] = file.Mode().String()
@@ -97,7 +97,7 @@ func SftpList(c *gin.Context) {
 		return paths
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"files":       fileList,
 		"file_count":  fileCount,
 		"dir_count":   dirCount,

@@ -11,7 +11,9 @@ import (
 	"gossh/websocket"
 	"io"
 	"log/slog"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -136,7 +138,6 @@ func (s *SshConn) connect(clientIp string) error {
 		slog.Error("create sftp sshClient error:", "err_msg", err)
 	}
 	s.sftpClient = sftpClient
-
 	sshSession, err := s.sshClient.NewSession()
 	if err != nil {
 		slog.Error("sshClient.NewSession error:", "err_msg", err.Error())
@@ -154,6 +155,7 @@ func (s *SshConn) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.R
 			slog.Error("RunTerminal error:", "err_msg", err)
 		}
 	}()
+	var err error
 
 	s.ws = ws
 	s.sshSession.Stdout = stdout
@@ -162,16 +164,24 @@ func (s *SshConn) RunTerminal(shell string, stdout, stderr io.Writer, stdin io.R
 	modes := ssh.TerminalModes{}
 	if err := s.sshSession.RequestPty(s.PtyType, h, w, modes); err != nil {
 		slog.Error("sshSession.RequestPty error:", "err_msg", err.Error())
-		_ = websocket.Message.Send(ws, "sshSession.RequestPty error:"+err.Error())
+		ws.WriteMessage(websocket.BinaryMessage, []byte("sshSession.RequestPty error:"+err.Error()))
 		return err
 	}
 
-	err := s.sshSession.Run(shell)
-	if err != nil {
-		slog.Error("sshSession.Run error:", err.Error())
-		_ = websocket.Message.Send(ws, "sshSession.Run error:"+err.Error())
+	if err = s.sshSession.Shell(); err != nil {
+		slog.Error("sshSession.Shell error:", "err_msg", err.Error())
 		return err
 	}
+
+	if err = s.sshSession.Wait(); err != nil {
+		if strings.Contains(err.Error(), "remote command exited without exit status or exit signal") {
+			slog.Info("sshSession.Wait remote command exited without exit status or exit signal")
+			return err
+		}
+		slog.Error("sshSession.Wait error:", "err_msg", err.Error())
+		return err
+	}
+
 	return nil
 }
 
@@ -227,43 +237,105 @@ func ResizeWindow(c *gin.Context) {
 }
 
 func NewSshConn(c *gin.Context) {
-	// WebSock 连接 SSH
-	websocket.Handler(func(ws *websocket.Conn) {
-		sessionId := ws.Request().URL.Query().Get("session_id")
-		defer DeleteOnlineClient(sessionId)
-		w, err := strconv.Atoi(ws.Request().URL.Query().Get("w"))
-		if err != nil || (w < 40 || w > 8192) {
-			_ = websocket.Message.Send(ws, "connect error window width !!!")
-			DeleteOnlineClient(sessionId)
-			return
-		}
-		h, err := strconv.Atoi(ws.Request().URL.Query().Get("h"))
-		if err != nil || (h < 2 || h > 4096) {
-			_ = websocket.Message.Send(ws, "connect error window height !!!")
-			DeleteOnlineClient(sessionId)
-			return
-		}
+	// 设置 websocket upgrader
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
 
-		cli, ok := OnlineClients.Load(sessionId)
-		if !ok || cli == nil {
-			_ = websocket.Message.Send(ws, "session_id not exists !!!")
-			DeleteOnlineClient(sessionId)
-			return
-		}
+	// 升级 HTTP 连接为 WebSocket 连接
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		slog.Error("Failed to upgrade connection:", "err_msg", err)
+		return
+	}
+	defer ws.Close()
 
-		conn, ok := cli.(*SshConn)
-		if !ok || conn == nil {
-			_ = websocket.Message.Send(ws, "to ssh.Session error !!!")
-			DeleteOnlineClient(sessionId)
-			return
+	// 设置 ping handler
+	ws.SetPingHandler(func(appData string) error {
+		return ws.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second*10))
+	})
+
+	// 启动 ping 保活
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := ws.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second*10)); err != nil {
+					slog.Error("ping error:", "err_msg", err)
+					return
+				}
+			}
 		}
-		err = conn.RunTerminal(conn.Shell, ws, ws, ws, w, h, ws)
-		if err != nil {
-			_ = websocket.Message.Send(ws, "connect error:"+err.Error())
-			DeleteOnlineClient(sessionId)
-			return
-		}
-	}).ServeHTTP(c.Writer, c.Request)
+	}()
+
+	sessionId := c.Query("session_id")
+	defer DeleteOnlineClient(sessionId)
+
+	w, err := strconv.Atoi(c.Query("w"))
+	if err != nil || (w < 40 || w > 8192) {
+		ws.WriteMessage(websocket.BinaryMessage, []byte("connect error window width !!!"))
+		DeleteOnlineClient(sessionId)
+		return
+	}
+
+	h, err := strconv.Atoi(c.Query("h"))
+	if err != nil || (h < 2 || h > 4096) {
+		ws.WriteMessage(websocket.BinaryMessage, []byte("connect error window height !!!"))
+		DeleteOnlineClient(sessionId)
+		return
+	}
+
+	cli, ok := OnlineClients.Load(sessionId)
+	if !ok || cli == nil {
+		ws.WriteMessage(websocket.BinaryMessage, []byte("session_id not exists !!!"))
+		DeleteOnlineClient(sessionId)
+		return
+	}
+
+	conn, ok := cli.(*SshConn)
+	if !ok || conn == nil {
+		ws.WriteMessage(websocket.BinaryMessage, []byte("to ssh.Session error !!!"))
+		DeleteOnlineClient(sessionId)
+		return
+	}
+
+	// 创建一个适配器来实现 io.Reader 和 io.Writer 接口
+	wsReadWriter := &WebSocketReadWriter{ws: ws}
+
+	err = conn.RunTerminal(conn.Shell, wsReadWriter, wsReadWriter, wsReadWriter, w, h, ws)
+	if err != nil {
+		ws.WriteMessage(websocket.BinaryMessage, []byte("connect error:"+err.Error()))
+		DeleteOnlineClient(sessionId)
+		return
+	}
+}
+
+// WebSocketReadWriter 实现 io.Reader 和 io.Writer 接口
+type WebSocketReadWriter struct {
+	ws *websocket.Conn
+}
+
+func (w *WebSocketReadWriter) Read(p []byte) (n int, err error) {
+	_, message, err := w.ws.ReadMessage()
+	if err != nil {
+		return 0, err
+	}
+	copy(p, message)
+	return len(message), nil
+}
+
+func (w *WebSocketReadWriter) Write(p []byte) (n int, err error) {
+	err = w.ws.WriteMessage(websocket.BinaryMessage, p)
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 func CreateSessionId(c *gin.Context) {
