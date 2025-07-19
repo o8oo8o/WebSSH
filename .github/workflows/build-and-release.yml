@@ -48,60 +48,52 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          path: src/github.com/${{ github.repository }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.5'
 
-      - name: Configure GOPATH
+      - name: Prepare workspace
         run: |
-          echo "GOPATH=$HOME/go" >> $GITHUB_ENV
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-          echo "PROJECT_PATH=src/github.com/${{ github.repository }}" >> $GITHUB_ENV
+          echo "📂 Workspace structure:"
+          ls -la
           
-          # 设置完整的项目路径
-          echo "FULL_PROJECT_PATH=$GITHUB_WORKSPACE/src/github.com/${{ github.repository }}" >> $GITHUB_ENV
-          ls -lR $GITHUB_WORKSPACE/src/github.com/${{ github.repository }}
-        shell: bash
+          echo "📂 gossh directory content:"
+          ls -la gossh
+          
+          # 确保目录存在
+          if [ ! -d "gossh" ]; then
+            echo "❌ Error: gossh directory not found!"
+            exit 1
+          fi
+          
+          # 进入gossh目录准备构建
+          cd gossh
+          
+          # 更新依赖
+          go mod tidy
+          go mod download
 
       - name: Build for ${{ matrix.os }} (${{ matrix.arch }})
         run: |
-          cd "$FULL_PROJECT_PATH/gossh"
-          pwd
-          ls -l
-          
-          # 确保有正确的模块支持
-          go mod tidy
-          
-          # 设置版本信息
-          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          cd gossh
           
           # 静态编译
           CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.arch }} \
-            go build -trimpath -ldflags="-s -w -X 'main.version=$VERSION'" \
-            -o GoWebSSH${{ matrix.suffix }}
+            go build -trimpath -ldflags="-s -w" -o GoWebSSH${{ matrix.suffix }}
           
-          # 创建版本信息文件
-          echo "version: $VERSION" > version.txt
-          echo "build_date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> version.txt
+          # 验证构建结果
+          if [ -f "GoWebSSH${{ matrix.suffix }}" ]; then
+            echo "✅ Build successful! Output file: GoWebSSH${{ matrix.suffix }}"
+          else
+            echo "❌ Build failed! No output file found in: $(pwd)"
+            ls -la
+            exit 1
+          fi
           
-          # 创建压缩包在项目根目录
-          mkdir -p $GITHUB_WORKSPACE/dist
-          zip -j $GITHUB_WORKSPACE/dist/GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip \
-            GoWebSSH${{ matrix.suffix }} \
-            version.txt
-        shell: bash
-
-      - name: Generate checksums
-        run: |
-          cd $GITHUB_WORKSPACE/dist
-          sha256sum GoWebSSH-*.zip > checksums.txt
-          cat checksums.txt
-        shell: bash
+          # 创建压缩包（在仓库根目录）
+          zip -j ../GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip GoWebSSH${{ matrix.suffix }}
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -109,7 +101,4 @@ jobs:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           files: |
-            dist/GoWebSSH-*.zip
-            dist/checksums.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GoWebSSH-*.zip
