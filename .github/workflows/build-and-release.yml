@@ -60,6 +60,7 @@ jobs:
 
       - name: Build for ${{ matrix.os }} (${{ matrix.arch }})
         run: |
+          cd gossh
           CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.arch }} go build -o GoWebSSH${{ matrix.suffix }}
           zip -j GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip GoWebSSH${{ matrix.suffix }}
 
