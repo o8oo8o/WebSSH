@@ -60,12 +60,10 @@ jobs:
 
       - name: Build for ${{ matrix.os }} (${{ matrix.arch }})
         run: |
-          cd gossh && \
           ls -l && \
           go mod tidy && \
           CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.arch }} go build -o GoWebSSH${{ matrix.suffix }} && \
-          zip -j ../GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip GoWebSSH${{ matrix.suffix }} && \
-          mv GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip ../
+          zip -j ../GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip GoWebSSH${{ matrix.suffix }}
         working-directory: ./gossh
 
       - name: Create Release and Upload Assets
