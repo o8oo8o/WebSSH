@@ -1,55 +1,71 @@
-name: Build&Release
-on:
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'tag_name'
-        default: 2.3
+name: Build & Release
 
-      name:
-        description: 'release name'
-        default: 2.3
-        
-      body:
-        description: 'release body'
-        default: 
-        
-      draft:
-        description: 'Is release draft?'
-        type: boolean
-        default: true
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-  build:
-    name: Build release
+  build-release:
     runs-on: ubuntu-latest
+    name: Build and Release for Multiple OS & Arch
+    permissions:
+      contents: write
+    
+    strategy:
+      matrix:
+        include:
+          # Windows targets (64-bit only)
+          - os: windows
+            goos: windows
+            arch: amd64
+            suffix: .exe
+          - os: windows
+            goos: windows
+            arch: arm64
+            suffix: .exe
+          
+          # Linux targets (64-bit architectures)
+          - os: linux
+            goos: linux
+            arch: amd64
+            suffix: ''
+          - os: linux
+            goos: linux
+            arch: arm64
+            suffix: ''
+          - os: linux
+            goos: linux
+            arch: riscv64
+            suffix: ''
+          
+          # macOS targets (64-bit only) - CORRECTED: use "darwin" for GOOS
+          - os: macos
+            goos: darwin
+            arch: amd64
+            suffix: ''
+          - os: macos
+            goos: darwin
+            arch: arm64
+            suffix: ''
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.ref }}
-          
-      - name: Setup Go
-        uses: actions/setup-go@v5.0.0
-        with:
-          go-version: 1.22.2
 
-      - name: Build
-        run:  |
-          cd gossh
-          make -j all
-        
-      - name: Release
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.5'
+
+      - name: Build for ${{ matrix.os }} (${{ matrix.arch }})
+        run: |
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.arch }} go build -o GoWebSSH${{ matrix.suffix }}
+          zip -j GoWebSSH-${{ matrix.os }}-${{ matrix.arch }}.zip GoWebSSH${{ matrix.suffix }}
+
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag_name }}
-          name: ${{ inputs.name }}
-          body: ${{ inputs.body }}
-          draft: ${{ inputs.draft }}
-          files: |
-            gossh/WebSSH-linux-amd64
-            gossh/WebSSH-linux-arm64
-            gossh/WebSSH-macos-amd64
-            gossh/WebSSH-windows-amd64.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: GoWebSSH-*.zip
